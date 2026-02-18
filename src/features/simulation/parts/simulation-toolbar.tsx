@@ -2,10 +2,17 @@ import { useState } from 'react'
 import { Play, Pause, Square, RotateCcw, Activity, ChevronDown } from '@shared/ui/icons'
 import { cn } from '@shared/utils'
 import { SIM_REGISTRY, SIM_CATEGORIES } from '../types/sim-registry'
-import type { SimulationCategory } from '@shared/types/simulation.types'
+import type { SimulationCategory, SimulationType, SimulationConfig } from '@shared/types/simulation.types'
 
-// Minimal stub — the toolbar shows a run/stop control and sim picker
-// Full state management will be wired in once canvas context is established
+interface SimulationToolbarProps {
+  isRunning: boolean
+  isPaused: boolean
+  progressPercent: number
+  onStart: (config: Omit<SimulationConfig, 'id' | 'createdAt'>) => void
+  onPause: () => void
+  onResume: () => void
+  onStop: () => void
+}
 
 interface SimButtonProps {
   icon: React.ReactNode
@@ -31,35 +38,36 @@ function SimButton({ icon, label, onClick, variant = 'default', disabled }: SimB
   )
 }
 
-export function SimulationToolbar() {
-  const [isRunning, setIsRunning] = useState(false)
-  const [isPaused, setIsPaused] = useState(false)
+export function SimulationToolbar({
+  isRunning,
+  isPaused,
+  progressPercent,
+  onStart,
+  onPause,
+  onResume,
+  onStop,
+}: SimulationToolbarProps) {
   const [showPicker, setShowPicker] = useState(false)
   const [selectedType, setSelectedType] = useState('load-test')
-  const [progress, setProgress] = useState(0)
 
   const selectedDef = SIM_REGISTRY.find(d => d.type === selectedType)
   const categorized = Object.entries(SIM_CATEGORIES) as [SimulationCategory, string][]
+  const isActive = isRunning || isPaused
 
   const handleStart = () => {
-    setIsRunning(true)
-    setIsPaused(false)
-    setProgress(0)
-    // In full implementation, this calls useSimulation().start()
-  }
-
-  const handlePause = () => {
-    setIsPaused(true)
-  }
-
-  const handleResume = () => {
-    setIsPaused(false)
-  }
-
-  const handleStop = () => {
-    setIsRunning(false)
-    setIsPaused(false)
-    setProgress(0)
+    if (!selectedDef) return
+    const params: Record<string, number | string | boolean | string[]> = {}
+    for (const field of selectedDef.params) {
+      params[field.key] = field.defaultValue as number | string | boolean | string[]
+    }
+    const durationMs = (params.durationMs as number) ?? 60000
+    onStart({
+      name: selectedDef.label,
+      type: selectedType as SimulationType,
+      params,
+      durationMs,
+      targetNodeIds: [],
+    })
   }
 
   return (
@@ -69,7 +77,7 @@ export function SimulationToolbar() {
         <button
           type="button"
           onClick={() => setShowPicker(p => !p)}
-          disabled={isRunning}
+          disabled={isActive}
           className={cn(
             'flex items-center gap-1.5 rounded-lg border border-border bg-muted px-2.5 py-1.5 text-xs font-semibold text-foreground transition-all hover:border-primary/30 disabled:opacity-50',
           )}
@@ -82,7 +90,7 @@ export function SimulationToolbar() {
         <div className="h-5 w-px bg-border" />
 
         {/* Controls */}
-        {!isRunning ? (
+        {!isActive ? (
           <SimButton
             icon={<Play className="h-3.5 w-3.5" />}
             label="Run"
@@ -96,49 +104,49 @@ export function SimulationToolbar() {
                 icon={<Play className="h-3.5 w-3.5" />}
                 label="Resume"
                 variant="primary"
-                onClick={handleResume}
+                onClick={onResume}
               />
             ) : (
               <SimButton
                 icon={<Pause className="h-3.5 w-3.5" />}
                 label="Pause"
-                onClick={handlePause}
+                onClick={onPause}
               />
             )}
             <SimButton
               icon={<Square className="h-3 w-3" />}
               label="Stop"
               variant="danger"
-              onClick={handleStop}
+              onClick={onStop}
             />
           </>
         )}
 
         {/* Progress bar */}
-        {isRunning && (
+        {isActive && (
           <>
             <div className="h-5 w-px bg-border" />
             <div className="flex items-center gap-2">
               <div className="h-1.5 w-24 rounded-full bg-muted overflow-hidden">
                 <div
                   className="h-full rounded-full bg-primary transition-all duration-1000"
-                  style={{ width: `${progress}%` }}
+                  style={{ width: `${progressPercent}%` }}
                 />
               </div>
               <span className="w-8 text-right text-[10px] font-mono text-muted-foreground">
-                {Math.round(progress)}%
+                {Math.round(progressPercent)}%
               </span>
             </div>
           </>
         )}
 
         {/* Reset */}
-        {!isRunning && progress > 0 && (
+        {!isActive && progressPercent > 0 && (
           <SimButton
             icon={<RotateCcw className="h-3 w-3" />}
             label="Reset"
             variant="ghost"
-            onClick={() => setProgress(0)}
+            onClick={onStop}
           />
         )}
       </div>

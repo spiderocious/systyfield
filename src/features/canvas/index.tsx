@@ -283,6 +283,7 @@ function CanvasInner() {
   const [bottleneck, setBottleneck] = useState<{ label: string; errorRate: number } | null>(null)
   const [speedMultiplier, setSpeedMultiplier] = useState(1)
   const [copiedNodes, setCopiedNodes] = useState<CanvasNode[]>([])
+  const [hasMetrics, setHasMetrics] = useState(false)
   const metricsHistoryRef = useRef<Array<{ elapsedSec: number; totalRps: number; totalErrorRate: number; avgLatencyP99: number }>>([])
   const canvasWrapperRef = useRef<HTMLDivElement>(null)
 
@@ -302,7 +303,6 @@ function CanvasInner() {
     removeNode,
     updateEdgeData,
     removeEdge,
-    reactFlowWrapper,
     setInitialCanvas,
     setNodes,
     setEdges,
@@ -449,6 +449,7 @@ function CanvasInner() {
       totalErrorRate: metrics.totalErrorRate,
       avgLatencyP99: metrics.avgLatencyP99,
     })
+    setHasMetrics(true)
   }, [])
 
   const { isRunning, isPaused, isCompleted, progressPercent, simState, start, pause, resume, stop } =
@@ -482,6 +483,8 @@ function CanvasInner() {
           simStatus,
           errorRate: nodeMetrics.errorRate,
           loadFactor: nodeMetrics.cpuPercent / 100,
+          rps: nodeMetrics.rps,
+          latencyP99: nodeMetrics.latencyP99,
         },
       }
     }))
@@ -493,7 +496,7 @@ function CanvasInner() {
     const worst = liveMetrics.nodes.reduce((max, n) => n.errorRate > max.errorRate ? n : max, liveMetrics.nodes[0])
     if (worst && worst.errorRate > 0.1) {
       const nodeLabel = nodes.find(n => n.id === worst.nodeId)?.data.label ?? worst.nodeId
-      setBottleneck({ label: nodeLabel, errorRate: worst.errorRate })
+      setTimeout(() => setBottleneck({ label: nodeLabel, errorRate: worst.errorRate }), 0)
     }
     // Record in sim history
     if (liveMetrics) {
@@ -506,7 +509,7 @@ function CanvasInner() {
         finalErrorRate: liveMetrics.totalErrorRate,
         finalP99: liveMetrics.avgLatencyP99,
       }
-      setSimHistory(h => [entry, ...h].slice(0, 10))
+      setTimeout(() => setSimHistory(h => [entry, ...h].slice(0, 10)), 0)
     }
   }, [isCompleted]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -791,7 +794,7 @@ function CanvasInner() {
         <NodePalette mode={state.mode} />
 
         {/* Canvas */}
-        <div className="relative flex-1 overflow-hidden" ref={el => { (reactFlowWrapper as React.MutableRefObject<HTMLDivElement | null>).current = el; (canvasWrapperRef as React.MutableRefObject<HTMLDivElement | null>).current = el }}>
+        <div className="relative flex-1 overflow-hidden" ref={canvasWrapperRef}>
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -804,6 +807,7 @@ function CanvasInner() {
             onDrop={handleDrop}
             onDragOver={onDragOver}
             nodeTypes={NODE_TYPES}
+            edgeTypes={EDGE_TYPES}
             fitView
             deleteKeyCode={['Delete', 'Backspace']}
             multiSelectionKeyCode="Shift"
@@ -933,7 +937,7 @@ function CanvasInner() {
             progressPercent={progressPercent}
             simulationType={simType}
             nodes={nodes}
-            onExportCsv={metricsHistoryRef.current.length > 0 ? handleExportMetricsCsv : undefined}
+            onExportCsv={hasMetrics ? handleExportMetricsCsv : undefined}
           />
         ) : selectedEdge ? (
           <EdgeConfigPanel

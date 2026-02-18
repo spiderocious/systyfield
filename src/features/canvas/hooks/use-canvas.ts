@@ -18,7 +18,7 @@ export type CanvasEdge = Edge<{ label?: string; edgeType?: string; latencyMs?: n
 export function useCanvas(mode: DesignMode) {
   const [nodes, setNodes, onNodesChange] = useNodesState<CanvasNode>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<CanvasEdge>([])
-  const reactFlowWrapper = useRef<HTMLDivElement | null>(null)
+  const reactFlowWrapperRef = useRef<HTMLDivElement | null>(null)
 
   const addNode = useCallback(
     (nodeType: NodeType, position: { x: number; y: number }) => {
@@ -185,7 +185,7 @@ export function useCanvas(mode: DesignMode) {
     removeNode,
     updateEdgeData,
     removeEdge,
-    reactFlowWrapper,
+    reactFlowWrapperRef,
     setInitialCanvas,
     setNodes,
     setEdges,

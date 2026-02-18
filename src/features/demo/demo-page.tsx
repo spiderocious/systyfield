@@ -156,7 +156,7 @@ export function DemoPage() {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto bg-background">
+    <div className="flex h-full flex-col overflow-y-auto bg-background w-full">
       {/* Top bar */}
       <div className="sticky top-0 z-10 flex items-center border-b border-border bg-card/95 px-6 py-3 backdrop-blur-sm">
         <button

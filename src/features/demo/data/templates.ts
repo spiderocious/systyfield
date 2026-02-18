@@ -104,4 +104,27 @@ export const DEMO_TEMPLATES: DemoTemplate[] = [
       edge('e3', 'db1', 'r1'),
     ],
   },
+
+  // ── 4. UI Architecture ────────────────────────────────────────────────────────
+  {
+    id: 'ui-flow',
+    title: 'UI Architecture Flow',
+    badge: 'UI Mode',
+    badgeColor: 'text-warning bg-warning/10',
+    mode: 'ui',
+    description: 'Map screens to API bindings and reusable components — a Login page, a Dashboard, an auth call, a profile fetch, and a UserCard component.',
+    tip: 'Click any Screen node and upload a screenshot or mockup from the config panel — it shows up right in the node.',
+    nodes: [
+      node('s1', 'screen', 'Login Page', 40, 80),
+      node('s2', 'screen', 'Dashboard', 40, 260),
+      node('api1', 'api-binding', 'POST /auth/login', 260, 80),
+      node('api2', 'api-binding', 'GET /user/profile', 260, 260),
+      node('c1', 'component', 'UserCard', 480, 260),
+    ],
+    edges: [
+      edge('e1', 's1', 'api1'),
+      edge('e2', 's2', 'api2'),
+      edge('e3', 'api2', 'c1'),
+    ],
+  },
 ]

@@ -9,7 +9,7 @@ import {
   type NodeTypes,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useUrlState } from '@shared/hooks'
 import { log } from '@shared/utils'
 import { useCanvas } from './hooks'
@@ -19,8 +19,9 @@ import { NodePalette } from '@features/node-palette'
 import { SimulationToolbar, useSimulation } from '@features/simulation'
 import { DesignHeaderBar, ShareModal, useDesignSession } from '@features/session'
 import { MetricsPanel } from '@features/metrics-panel'
-import type { NodeData, Canvas, DesignNode, DesignEdge } from '@shared/types'
+import type { NodeData, NodeType, Canvas, DesignNode, DesignEdge } from '@shared/types'
 import type { CanvasNode } from './types'
+import type { CanvasEdge } from './hooks'
 import type { MetricsSnapshot, SimulationConfig } from '@shared/types/simulation.types'
 
 const NODE_TYPES: NodeTypes = {
@@ -46,9 +47,49 @@ function CanvasInner() {
     updateNodeLabel,
     removeNode,
     reactFlowWrapper,
+    setInitialCanvas,
   } = useCanvas(state.mode)
 
-  const { design, isSaving, updateTitle, saveNow } = useDesignSession(state.mode)
+  const { design, isSaving, updateTitle, saveNow, scheduleAutosave } = useDesignSession(state.mode)
+
+  // Tracks whether the initial population from the design has completed.
+  // Prevents the auto-save effect from firing during the first load.
+  const populatedRef = useRef(false)
+
+  // Restore xyflow nodes/edges from the loaded design (runs once per design identity).
+  useEffect(() => {
+    if (!design) return
+    populatedRef.current = false
+
+    if (design.canvas.nodes.length > 0) {
+      const initialNodes: CanvasNode[] = design.canvas.nodes.map(n => ({
+        id: n.id,
+        type: 'base' as const,
+        position: n.position,
+        data: {
+          label: n.label,
+          nodeType: n.type as NodeType,
+          data: n.data,
+        },
+      }))
+      const initialEdges: CanvasEdge[] = design.canvas.edges.map(e => ({
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        type: e.type ?? 'default',
+      }))
+      setInitialCanvas(initialNodes, initialEdges)
+      log.canvas.info('Restored canvas from design', {
+        id: design.id,
+        nodes: initialNodes.length,
+        edges: initialEdges.length,
+      })
+    }
+
+    // Mark as ready after xyflow has processed the state update
+    const t = setTimeout(() => { populatedRef.current = true }, 50)
+    return () => clearTimeout(t)
+  }, [design?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Build a Canvas snapshot for the simulation adapter — derived from xyflow state
   const canvasSnapshot = useMemo<Canvas>(() => ({
@@ -67,6 +108,13 @@ function CanvasInner() {
     })),
     viewport: { x: 0, y: 0, zoom: 1 },
   }), [nodes, edges])
+
+  // Auto-save whenever the canvas changes (nodes dragged, added, removed, configured).
+  // Uses a ref guard so we don't save during the initial load restoration.
+  useEffect(() => {
+    if (!design || !populatedRef.current) return
+    scheduleAutosave({ ...design, canvas: canvasSnapshot })
+  }, [canvasSnapshot]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleMetricsUpdate = useCallback((metrics: MetricsSnapshot) => {
     setLiveMetrics(metrics)

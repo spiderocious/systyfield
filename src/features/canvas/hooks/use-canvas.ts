@@ -131,6 +131,15 @@ export function useCanvas(mode: DesignMode) {
     event.dataTransfer.dropEffect = 'move'
   }, [])
 
+  // Populate xyflow state from a saved design (called once when design loads)
+  const setInitialCanvas = useCallback(
+    (initialNodes: CanvasNode[], initialEdges: CanvasEdge[]) => {
+      setNodes(initialNodes)
+      setEdges(initialEdges)
+    },
+    [setNodes, setEdges]
+  )
+
   return {
     nodes,
     edges,
@@ -144,5 +153,6 @@ export function useCanvas(mode: DesignMode) {
     updateNodeLabel,
     removeNode,
     reactFlowWrapper,
+    setInitialCanvas,
   }
 }

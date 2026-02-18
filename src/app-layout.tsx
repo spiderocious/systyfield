@@ -1,0 +1,13 @@
+import { Outlet } from 'react-router-dom'
+import { AppHeader } from './app-header'
+
+export function AppLayout() {
+  return (
+    <div className="flex h-screen w-screen flex-col overflow-hidden bg-background">
+      <AppHeader />
+      <main className="relative flex flex-1 overflow-hidden">
+        <Outlet />
+      </main>
+    </div>
+  )
+}

@@ -7,6 +7,10 @@ const CanvasPage = lazy(() =>
   import('@features/canvas').then(m => ({ default: m.CanvasPage }))
 )
 
+const DemoPage = lazy(() =>
+  import('@features/demo').then(m => ({ default: m.DemoPage }))
+)
+
 function PageLoader() {
   return (
     <div className="flex h-full w-full items-center justify-center">
@@ -23,6 +27,14 @@ export function AppRoutes() {
     <Routes>
       <Route path={ROUTES.ROOT} element={<Navigate to={ROUTES.CANVAS.NEW} replace />} />
       <Route element={<AppLayout />}>
+        <Route
+          path={ROUTES.DEMO}
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <DemoPage />
+            </Suspense>
+          }
+        />
         <Route
           path={ROUTES.CANVAS.NEW}
           element={

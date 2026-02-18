@@ -58,6 +58,15 @@ export {
   Workflow,
   GitBranch,
   Gauge,
+  Upload,
+  ImageIcon,
+  ArrowLeft,
+  ExternalLink,
+  RefreshCw,
+  Sparkles,
+  Layers3,
+  MousePointerClick,
+  TrendingUp,
 } from 'lucide-react'
 
 export type { LucideIcon } from 'lucide-react'

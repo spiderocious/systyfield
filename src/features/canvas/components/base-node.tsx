@@ -28,6 +28,11 @@ export function BaseNode({ data, selected }: CanvasNodeProps) {
   const IconComponent = (Icons as Record<string, LucideIcon>)[def.icon] ?? Icons.Server
   const colorVar = `var(${def.colorVar})`
 
+  // Screen nodes can show an uploaded image in the node body
+  const imageUrl = nodeType === 'screen'
+    ? (data.data as { imageUrl?: string }).imageUrl
+    : undefined
+
   return (
     <div className={cn(
       'relative min-w-[140px] rounded-xl border bg-card shadow-sm transition-all',
@@ -43,6 +48,11 @@ export function BaseNode({ data, selected }: CanvasNodeProps) {
           <p className="text-[10px] font-medium" style={{ color: colorVar }}>{def.label}</p>
         </div>
       </div>
+      {imageUrl && (
+        <div className="overflow-hidden rounded-b-xl border-t border-border">
+          <img src={imageUrl} alt={label} className="w-full object-cover max-h-32" />
+        </div>
+      )}
       {isSimulating && loadFactor !== undefined && (
         <div className="border-t border-border px-3 py-1.5">
           <div className="flex items-center justify-between gap-2">

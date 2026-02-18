@@ -1,8 +1,9 @@
+import { useRef } from 'react'
 import type { CanvasNode } from '../hooks'
 import { NODE_TYPE_REGISTRY } from '@shared/constants'
 import type { ConfigField } from '@shared/constants'
 import { cn } from '@shared/utils'
-import { X, Trash2 } from '@shared/ui/icons'
+import { X, Trash2, Upload, ImageIcon } from '@shared/ui/icons'
 import * as Icons from '@shared/ui/icons'
 import type { LucideIcon } from '@shared/ui/icons'
 
@@ -18,6 +19,52 @@ interface FieldInputProps {
   field: ConfigField
   value: unknown
   onChange: (val: unknown) => void
+}
+
+function ImageUploadField({ value, onChange }: { value: string | undefined; onChange: (val: string | undefined) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => {
+      onChange(ev.target?.result as string)
+    }
+    reader.readAsDataURL(file)
+    // Reset the input so the same file can be re-selected
+    e.target.value = ''
+  }
+
+  return (
+    <div className="space-y-2">
+      {value ? (
+        <div className="relative rounded-lg overflow-hidden border border-border">
+          <img src={value} alt="Screen preview" className="w-full object-cover max-h-36" />
+          <button
+            type="button"
+            onClick={() => onChange(undefined)}
+            className="absolute top-1.5 right-1.5 rounded-full bg-card/90 p-1 text-muted-foreground shadow-sm hover:text-destructive"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      ) : (
+        <div className="flex h-20 items-center justify-center rounded-lg border border-dashed border-border bg-muted/30">
+          <ImageIcon className="h-6 w-6 text-muted-foreground/40" />
+        </div>
+      )}
+      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border py-2 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+      >
+        <Upload className="h-3.5 w-3.5" />
+        {value ? 'Replace image' : 'Upload image'}
+      </button>
+    </div>
+  )
 }
 
 function FieldInput({ field, value, onChange }: FieldInputProps) {
@@ -161,6 +208,14 @@ function FieldInput({ field, value, onChange }: FieldInputProps) {
         </div>
       )
     }
+
+    case 'image-upload':
+      return (
+        <ImageUploadField
+          value={value as string | undefined}
+          onChange={onChange}
+        />
+      )
 
     default:
       return (

@@ -240,9 +240,12 @@ function CanvasInner() {
 }
 
 export function CanvasPage() {
-  log.canvas.info('CanvasPage mounted')
+  const { state } = useUrlState()
+  log.canvas.info('CanvasPage mounted', { mode: state.mode })
+  // key={mode} forces a full remount when the design mode changes so
+  // nodes/edges/simulation state from the previous mode never bleed through.
   return (
-    <ReactFlowProvider>
+    <ReactFlowProvider key={state.mode}>
       <CanvasInner />
     </ReactFlowProvider>
   )

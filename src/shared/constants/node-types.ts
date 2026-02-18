@@ -9,6 +9,7 @@ export type ConfigFieldType =
   | 'boolean'
   | 'key-value'
   | 'tags'
+  | 'image-upload'
 
 export interface ConfigField {
   key: string
@@ -219,6 +220,7 @@ export const NODE_TYPE_REGISTRY: Record<NodeType, NodeTypeDef> = {
     },
     configFields: [
       { key: 'name', label: 'Screen Name', type: 'text', placeholder: 'Home, Dashboard, Profile...' },
+      { key: 'imageUrl', label: 'Screen Image', type: 'image-upload', description: 'Upload a screenshot or mockup' },
     ],
   },
 

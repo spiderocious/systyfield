@@ -1,5 +1,6 @@
 export const ROUTES = {
   ROOT: '/',
+  DEMO: '/demo',
   CANVAS: {
     NEW: '/canvas/new',
     DESIGN: (id: string) => `/canvas/${id}`,

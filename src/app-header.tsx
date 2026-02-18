@@ -1,8 +1,10 @@
+import { Link } from 'react-router-dom'
 import { useUrlState, useTheme } from '@shared/hooks'
 import type { DesignMode } from '@shared/types'
-import { Sun, Moon, SunMoon, Bug } from '@shared/ui/icons'
+import { Sun, Moon, SunMoon, Bug, Sparkles } from '@shared/ui/icons'
 import { cn } from '@shared/utils'
 import { isDebugMode } from '@shared/utils'
+import { ROUTES } from '@shared/constants'
 import type { Theme } from '@shared/hooks'
 
 const MODES: Array<{ value: DesignMode; label: string }> = [
@@ -63,6 +65,13 @@ export function AppHeader() {
             <span className="text-xs font-medium text-warning">debug</span>
           </div>
         )}
+        <Link
+          to={ROUTES.DEMO}
+          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+          Examples
+        </Link>
         <button
           onClick={() => setTheme(nextTheme)}
           className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"

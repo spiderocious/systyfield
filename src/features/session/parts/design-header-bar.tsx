@@ -1,7 +1,22 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import type { Design } from '@shared/types'
-import { Save, Share2, Check } from '@shared/ui/icons'
+import { Save, Share2, Check, Grid3X3, Layers, SlidersHorizontal, Download, FileJson, Upload, ImageIcon } from '@shared/ui/icons'
 import { cn } from '@shared/utils'
+import { exportDesignAsJson, importDesignFromJson } from '../services/export-service'
+
+type BgStyle = 'dots' | 'lines' | 'cross'
+
+const MODE_COLORS: Record<string, string> = {
+  system: 'bg-primary/10 text-primary border-primary/20',
+  ui: 'bg-warning/10 text-warning border-warning/20',
+  service: 'bg-success/10 text-success border-success/20',
+}
+
+const BG_STYLE_ICONS: Record<BgStyle, React.ReactNode> = {
+  dots: <Grid3X3 className="h-3 w-3" />,
+  lines: <Layers className="h-3 w-3" />,
+  cross: <SlidersHorizontal className="h-3 w-3" />,
+}
 
 interface DesignHeaderBarProps {
   design: Design
@@ -9,6 +24,13 @@ interface DesignHeaderBarProps {
   onTitleChange: (title: string) => void
   onSave: () => void
   onShare: () => void
+  currentMode?: string
+  onBgToggle?: () => void
+  bgStyle?: BgStyle
+  onImportDesign?: (design: Design) => void
+  onExportPng?: () => void
+  onExportOpenApi?: () => void
+  onExportTs?: () => void
 }
 
 export function DesignHeaderBar({
@@ -17,10 +39,20 @@ export function DesignHeaderBar({
   onTitleChange,
   onSave,
   onShare,
+  currentMode,
+  onBgToggle,
+  bgStyle = 'dots',
+  onImportDesign,
+  onExportPng,
+  onExportOpenApi,
+  onExportTs,
 }: DesignHeaderBarProps) {
   const [editing, setEditing] = useState(false)
   const [titleValue, setTitleValue] = useState(design.meta.title)
+  const [showExportMenu, setShowExportMenu] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const importRef = useRef<HTMLInputElement>(null)
+  const exportMenuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setTitleValue(design.meta.title)
@@ -30,6 +62,18 @@ export function DesignHeaderBar({
     if (editing) inputRef.current?.focus()
   }, [editing])
 
+  // Close export menu on outside click
+  useEffect(() => {
+    if (!showExportMenu) return
+    const handler = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setShowExportMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showExportMenu])
+
   const commitTitle = () => {
     const trimmed = titleValue.trim()
     const final = trimmed || 'Untitled Design'
@@ -38,8 +82,27 @@ export function DesignHeaderBar({
     setEditing(false)
   }
 
+  const handleImportFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      const imported = await importDesignFromJson(file)
+      onImportDesign?.(imported)
+    } catch (err) {
+      console.error('Import failed:', err)
+    }
+    e.target.value = ''
+  }, [onImportDesign])
+
   return (
     <div className="flex items-center gap-3 border-b border-border bg-card px-4 py-2">
+      {/* Mode badge */}
+      {currentMode && (
+        <span className={cn('shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold capitalize', MODE_COLORS[currentMode] ?? 'bg-muted text-muted-foreground border-border')}>
+          {currentMode}
+        </span>
+      )}
+
       {/* Editable title */}
       <div className="flex-1 min-w-0">
         {editing ? (
@@ -85,6 +148,85 @@ export function DesignHeaderBar({
 
       {/* Actions */}
       <div className="flex items-center gap-1.5">
+        {/* Background style toggle */}
+        {onBgToggle && (
+          <button
+            type="button"
+            onClick={onBgToggle}
+            title={`Canvas background: ${bgStyle}`}
+            className="flex items-center gap-1 rounded-lg border border-border bg-muted px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
+          >
+            {BG_STYLE_ICONS[bgStyle]}
+            <span className="capitalize text-[10px]">{bgStyle}</span>
+          </button>
+        )}
+
+        {/* Export/Import dropdown */}
+        <div className="relative" ref={exportMenuRef}>
+          <button
+            type="button"
+            onClick={() => setShowExportMenu(m => !m)}
+            title="Export / Import"
+            className="flex items-center gap-1 rounded-lg border border-border bg-muted px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
+          >
+            <Download className="h-3 w-3" />
+            <span className="text-[10px]">Export</span>
+          </button>
+          {showExportMenu && (
+            <div className="absolute right-0 top-full mt-1 z-50 min-w-[180px] rounded-xl border border-border bg-card shadow-2xl">
+              <div className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border">Export</div>
+              <button
+                type="button"
+                onClick={() => { exportDesignAsJson(design); setShowExportMenu(false) }}
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
+              >
+                <FileJson className="h-3.5 w-3.5 text-muted-foreground" />
+                Download JSON
+              </button>
+              {onExportPng && (
+                <button
+                  type="button"
+                  onClick={() => { onExportPng(); setShowExportMenu(false) }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
+                >
+                  <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                  Export as PNG
+                </button>
+              )}
+              {onExportOpenApi && (
+                <button
+                  type="button"
+                  onClick={() => { onExportOpenApi(); setShowExportMenu(false) }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
+                >
+                  <FileJson className="h-3.5 w-3.5 text-success" />
+                  OpenAPI 3.0
+                </button>
+              )}
+              {onExportTs && (
+                <button
+                  type="button"
+                  onClick={() => { onExportTs(); setShowExportMenu(false) }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
+                >
+                  <FileJson className="h-3.5 w-3.5 text-primary" />
+                  TypeScript Types
+                </button>
+              )}
+              <div className="h-px bg-border mx-3" />
+              <div className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Import</div>
+              <button
+                type="button"
+                onClick={() => { importRef.current?.click(); setShowExportMenu(false) }}
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-muted rounded-b-xl transition-colors"
+              >
+                <Upload className="h-3.5 w-3.5 text-muted-foreground" />
+                Load from JSON
+              </button>
+            </div>
+          )}
+        </div>
+
         <button
           type="button"
           onClick={onSave}
@@ -104,6 +246,15 @@ export function DesignHeaderBar({
           Share
         </button>
       </div>
+
+      {/* Hidden file import input */}
+      <input
+        ref={importRef}
+        type="file"
+        accept=".json,.systyfield.json"
+        className="hidden"
+        onChange={handleImportFile}
+      />
     </div>
   )
 }

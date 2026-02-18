@@ -1,7 +1,7 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useUrlState, useTheme } from '@shared/hooks'
 import type { DesignMode } from '@shared/types'
-import { Sun, Moon, SunMoon, Bug, Sparkles } from '@shared/ui/icons'
+import { Sun, Moon, SunMoon, Bug, Sparkles, FolderOpen } from '@shared/ui/icons'
 import { cn } from '@shared/utils'
 import { isDebugMode } from '@shared/utils'
 import { ROUTES } from '@shared/constants'
@@ -25,37 +25,45 @@ export function AppHeader() {
   const { state, setUrlState } = useUrlState()
   const { theme, setTheme } = useTheme()
   const debug = isDebugMode()
+  const location = useLocation()
 
   const ThemeIcon = THEME_ICONS[theme]
   const nextTheme = THEME_CYCLE[(THEME_CYCLE.indexOf(theme) + 1) % THEME_CYCLE.length]
+
+  // Only show mode tabs on canvas pages
+  const isCanvasPage = location.pathname.startsWith('/canvas')
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-card px-4">
       {/* Logo */}
       <div className="flex items-center gap-3">
-        <AppLogo />
+        <Link to={ROUTES.CANVAS.NEW} className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
+          <AppLogo />
+        </Link>
         <span className="text-sm font-medium text-muted-foreground hidden sm:block">
           system design open field
         </span>
       </div>
 
-      {/* Mode tabs */}
-      <div className="flex items-center gap-1 rounded-lg border border-border bg-muted p-0.5">
-        {MODES.map(({ value, label }) => (
-          <button
-            key={value}
-            onClick={() => setUrlState({ mode: value, nodeId: null, simId: null })}
-            className={cn(
-              'rounded-md px-3 py-1 text-xs font-semibold transition-all',
-              state.mode === value
-                ? 'bg-card text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      {/* Mode tabs — only on canvas */}
+      {isCanvasPage && (
+        <div className="flex items-center gap-1 rounded-lg border border-border bg-muted p-0.5">
+          {MODES.map(({ value, label }) => (
+            <button
+              key={value}
+              onClick={() => setUrlState({ mode: value, nodeId: null, simId: null })}
+              className={cn(
+                'rounded-md px-3 py-1 text-xs font-semibold transition-all',
+                state.mode === value
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Right side actions */}
       <div className="flex items-center gap-2">
@@ -66,8 +74,21 @@ export function AppHeader() {
           </div>
         )}
         <Link
+          to={ROUTES.DESIGNS}
+          className={cn(
+            'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors hover:bg-muted hover:text-foreground',
+            location.pathname === ROUTES.DESIGNS ? 'text-foreground bg-muted' : 'text-muted-foreground'
+          )}
+        >
+          <FolderOpen className="h-3.5 w-3.5" />
+          My Designs
+        </Link>
+        <Link
           to={ROUTES.DEMO}
-          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className={cn(
+            'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors hover:bg-muted hover:text-foreground',
+            location.pathname === ROUTES.DEMO ? 'text-foreground bg-muted' : 'text-muted-foreground'
+          )}
         >
           <Sparkles className="h-3.5 w-3.5" />
           Examples

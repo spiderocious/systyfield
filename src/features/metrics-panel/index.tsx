@@ -1,12 +1,15 @@
 import type { MetricsSnapshot } from '@shared/types/simulation.types'
-import { Activity, Gauge, AlertCircle, Clock } from '@shared/ui/icons'
+import { Activity, Gauge, AlertCircle, Clock, Download } from '@shared/ui/icons'
 import { cn } from '@shared/utils'
+import type { CanvasNode } from '@features/canvas/types'
 
 interface MetricsPanelProps {
   metrics: MetricsSnapshot
   elapsedMs: number
   progressPercent: number
   simulationType: string
+  nodes?: CanvasNode[]
+  onExportCsv?: () => void
 }
 
 interface MetricCardProps {
@@ -60,7 +63,8 @@ function formatRps(rps: number): string {
   return `${Math.round(rps)}`
 }
 
-export function MetricsPanel({ metrics, elapsedMs, progressPercent, simulationType }: MetricsPanelProps) {
+export function MetricsPanel({ metrics, elapsedMs, progressPercent, simulationType, nodes, onExportCsv }: MetricsPanelProps) {
+  const getNodeLabel = (nodeId: string) => nodes?.find(n => n.id === nodeId)?.data.label ?? nodeId.slice(0, 8) + '…'
   const elapsed = Math.floor(elapsedMs / 1000)
   const minutes = Math.floor(elapsed / 60)
   const seconds = elapsed % 60
@@ -144,8 +148,8 @@ export function MetricsPanel({ metrics, elapsedMs, progressPercent, simulationTy
               {metrics.nodes.map(node => (
                 <div key={node.nodeId} className="rounded-xl border border-border bg-background p-2.5">
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[10px] font-mono font-semibold text-muted-foreground truncate">
-                      {node.nodeId.slice(0, 8)}...
+                    <span className="text-[10px] font-semibold text-foreground truncate max-w-[120px]">
+                      {getNodeLabel(node.nodeId)}
                     </span>
                     <span className={cn(
                       'text-[10px] font-bold',
@@ -194,11 +198,24 @@ export function MetricsPanel({ metrics, elapsedMs, progressPercent, simulationTy
 
       {/* Footer */}
       <div className="border-t border-border px-4 py-2.5">
-        <div className="flex items-center gap-1.5">
-          <Gauge className="h-3 w-3 text-muted-foreground" />
-          <p className="text-[10px] text-muted-foreground">
-            Metrics update every second
-          </p>
+        <div className="flex items-center justify-between gap-1.5">
+          <div className="flex items-center gap-1.5">
+            <Gauge className="h-3 w-3 text-muted-foreground" />
+            <p className="text-[10px] text-muted-foreground">
+              Metrics update every second
+            </p>
+          </div>
+          {onExportCsv && (
+            <button
+              type="button"
+              onClick={onExportCsv}
+              title="Export metrics as CSV"
+              className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[10px] text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
+            >
+              <Download className="h-3 w-3" />
+              CSV
+            </button>
+          )}
         </div>
       </div>
     </div>

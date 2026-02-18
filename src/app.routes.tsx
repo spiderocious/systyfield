@@ -11,6 +11,14 @@ const DemoPage = lazy(() =>
   import('@features/demo').then(m => ({ default: m.DemoPage }))
 )
 
+const DesignsPage = lazy(() =>
+  import('@features/session/pages/designs-page').then(m => ({ default: m.DesignsPage }))
+)
+
+const ViewPage = lazy(() =>
+  import('@features/session/pages/view-page').then(m => ({ default: m.ViewPage }))
+)
+
 function PageLoader() {
   return (
     <div className="flex h-full w-full items-center justify-center">
@@ -32,6 +40,22 @@ export function AppRoutes() {
           element={
             <Suspense fallback={<PageLoader />}>
               <DemoPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path={ROUTES.DESIGNS}
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <DesignsPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path={ROUTES.VIEW}
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <ViewPage />
             </Suspense>
           }
         />

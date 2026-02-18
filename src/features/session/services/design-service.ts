@@ -51,6 +51,27 @@ export async function deleteDesign(id: string): Promise<void> {
   return storageAdapter.deleteDesign(id)
 }
 
+export async function duplicateDesign(id: string): Promise<Design | null> {
+  const original = await storageAdapter.getDesign(id)
+  if (!original) return null
+  const now = new Date().toISOString()
+  const copy: Design = {
+    ...original,
+    id: uuidv4(),
+    editToken: uuidv4(),
+    viewToken: uuidv4().split('-')[0],
+    meta: {
+      ...original.meta,
+      title: `Copy of ${original.meta.title}`,
+      createdAt: now,
+      updatedAt: now,
+    },
+    simulations: [],
+  }
+  log.session.info('Duplicating design', { fromId: id, newId: copy.id })
+  return storageAdapter.saveDesign(copy)
+}
+
 export function getShareUrl(design: Design, type: 'view' | 'edit'): string {
   const token = type === 'edit' ? design.editToken : design.viewToken
   const base = window.location.origin

@@ -1,5 +1,6 @@
 import type { Design, DesignSummary } from '../types'
 import { log } from '../utils/log'
+import { APIStorageAdapter } from './api-storage-adapter'
 
 // ─── Interface ────────────────────────────────────────────────────────────────
 
@@ -112,6 +113,16 @@ export class LocalStorageAdapter implements DesignStorageAdapter {
   }
 }
 
-// ─── Singleton ────────────────────────────────────────────────────────────────
+// ─── Singleton — selects adapter based on VITE_API_URL env var ────────────────
 
-export const storageAdapter: DesignStorageAdapter = new LocalStorageAdapter()
+function createStorageAdapter(): DesignStorageAdapter {
+  const apiUrl = import.meta.env.VITE_API_URL as string | undefined
+  if (apiUrl) {
+    log.storage.info('Using APIStorageAdapter', { apiUrl })
+    return new APIStorageAdapter(apiUrl)
+  }
+  log.storage.info('Using LocalStorageAdapter (no VITE_API_URL set)')
+  return new LocalStorageAdapter()
+}
+
+export const storageAdapter: DesignStorageAdapter = createStorageAdapter()

@@ -124,6 +124,8 @@ export interface NodeSimState {
   currentRps: number
   errorRate: number
   queueDepth: number
+  baseLatencyMs?: number
+  activeReplicas?: number
 }
 
 // ─── Adapter Interface ────────────────────────────────────────────────────────

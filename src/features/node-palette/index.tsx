@@ -5,6 +5,7 @@ import { log } from '@shared/utils'
 import { Search } from '@shared/ui/icons'
 import * as Icons from '@shared/ui/icons'
 import type { LucideIcon } from '@shared/ui/icons'
+import { cn } from '@shared/utils'
 
 interface NodePaletteProps {
   mode: DesignMode
@@ -15,6 +16,7 @@ interface PaletteItemProps {
 }
 
 function PaletteItem({ nodeType }: PaletteItemProps) {
+  const [showTip, setShowTip] = useState(false)
   const def = NODE_TYPE_REGISTRY[nodeType]
   if (!def) return null
 
@@ -25,24 +27,48 @@ function PaletteItem({ nodeType }: PaletteItemProps) {
     log.canvas.debug('Drag start from palette', { nodeType })
     e.dataTransfer.setData('application/systyfield-node-type', nodeType)
     e.dataTransfer.effectAllowed = 'move'
+    setShowTip(false)
   }
 
   return (
-    <div
-      draggable
-      onDragStart={onDragStart}
-      className="flex cursor-grab items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2 transition-all active:cursor-grabbing hover:border-primary/30 hover:shadow-sm hover:bg-muted/50"
-    >
+    <div className="relative">
       <div
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-        style={{ backgroundColor: `color-mix(in srgb, ${colorVar} 15%, transparent)` }}
+        draggable
+        onDragStart={onDragStart}
+        onMouseEnter={() => setShowTip(true)}
+        onMouseLeave={() => setShowTip(false)}
+        className="flex cursor-grab items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2 transition-all active:cursor-grabbing hover:border-primary/30 hover:shadow-sm hover:bg-muted/50"
       >
-        <IconComponent className="h-3.5 w-3.5" style={{ color: colorVar }} />
+        <div
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+          style={{ backgroundColor: `color-mix(in srgb, ${colorVar} 15%, transparent)` }}
+        >
+          <IconComponent className="h-3.5 w-3.5" style={{ color: colorVar }} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold text-foreground truncate leading-tight">{def.label}</p>
+          <p className="text-[10px] text-muted-foreground truncate leading-tight">{def.description}</p>
+        </div>
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs font-semibold text-foreground truncate leading-tight">{def.label}</p>
-        <p className="text-[10px] text-muted-foreground truncate leading-tight">{def.description}</p>
-      </div>
+
+      {/* Hover tooltip */}
+      {showTip && (
+        <div className={cn(
+          'pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50',
+          'w-52 rounded-xl border border-border bg-card shadow-2xl p-3',
+        )}>
+          {/* Arrow */}
+          <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 rotate-45 border-b border-l border-border bg-card" />
+          <div className="flex items-center gap-2 mb-1.5">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: `color-mix(in srgb, ${colorVar} 20%, transparent)` }}>
+              <IconComponent className="h-3 w-3" style={{ color: colorVar }} />
+            </div>
+            <p className="text-xs font-bold text-foreground">{def.label}</p>
+          </div>
+          <p className="text-[10px] leading-relaxed text-muted-foreground">{def.description}</p>
+          <p className="mt-1.5 text-[9px] text-muted-foreground/60 font-medium uppercase tracking-wider">Drag to canvas</p>
+        </div>
+      )}
     </div>
   )
 }

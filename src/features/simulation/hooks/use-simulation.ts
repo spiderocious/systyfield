@@ -4,14 +4,15 @@ import type { Canvas } from '@shared/types/design.types'
 import { simulationAdapter, generateSimId } from '../services/simulation-adapter'
 import { log } from '@shared/utils'
 
-const TICK_MS = 1000
+const BASE_TICK_MS = 1000
 
 interface UseSimulationOptions {
   canvas: Canvas
   onMetricsUpdate?: (metrics: MetricsSnapshot) => void
+  speedMultiplier?: number
 }
 
-export function useSimulation({ canvas, onMetricsUpdate }: UseSimulationOptions) {
+export function useSimulation({ canvas, onMetricsUpdate, speedMultiplier = 1 }: UseSimulationOptions) {
   const [simState, setSimState] = useState<SimState | null>(null)
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -46,7 +47,9 @@ export function useSimulation({ canvas, onMetricsUpdate }: UseSimulationOptions)
     setSimState(null)
   }, [simState])
 
-  // Tick loop
+  // Tick loop — tick interval is divided by speedMultiplier (2× speed = 500ms ticks advancing 1000ms of sim time)
+  const tickMs = Math.round(BASE_TICK_MS / Math.max(speedMultiplier, 0.1))
+
   useEffect(() => {
     if (!simState || simState.status !== 'running') {
       if (tickRef.current) {
@@ -59,7 +62,8 @@ export function useSimulation({ canvas, onMetricsUpdate }: UseSimulationOptions)
     tickRef.current = setInterval(() => {
       setSimState(prev => {
         if (!prev || prev.status !== 'running') return prev
-        const next = simulationAdapter.step(prev, TICK_MS)
+        // Always advance 1000ms of sim time per tick regardless of tick interval
+        const next = simulationAdapter.step(prev, BASE_TICK_MS)
         if (onMetricsUpdate && next.currentMetrics) {
           onMetricsUpdate(next.currentMetrics)
         }
@@ -69,12 +73,12 @@ export function useSimulation({ canvas, onMetricsUpdate }: UseSimulationOptions)
         }
         return next
       })
-    }, TICK_MS)
+    }, tickMs)
 
     return () => {
       if (tickRef.current) clearInterval(tickRef.current)
     }
-  }, [simState?.status, onMetricsUpdate])
+  }, [simState?.status, onMetricsUpdate, tickMs])
 
   // Cleanup on unmount
   useEffect(() => {

@@ -13,7 +13,7 @@ import { log } from '@shared/utils'
 import type { CanvasNode } from '../types/canvas-node.types'
 
 export type { CanvasNode }
-export type CanvasEdge = Edge
+export type CanvasEdge = Edge<{ label?: string; edgeType?: string; latencyMs?: number }>
 
 export function useCanvas(mode: DesignMode) {
   const [nodes, setNodes, onNodesChange] = useNodesState<CanvasNode>([])
@@ -90,6 +90,35 @@ export function useCanvas(mode: DesignMode) {
     [setNodes, setEdges]
   )
 
+  const updateEdgeData = useCallback(
+    (edgeId: string, updates: Partial<{ label: string; edgeType: string; latencyMs: number }>) => {
+      log.canvas.debug('Updating edge data', { edgeId, updates })
+      setEdges(eds =>
+        eds.map(e => {
+          if (e.id !== edgeId) return e
+          const newLabel = updates.label !== undefined ? updates.label : e.label
+          return {
+            ...e,
+            label: newLabel,
+            data: { ...e.data, ...updates },
+            // Use labeled style for non-default edge types
+            type: updates.edgeType === 'event' ? 'labeled' : 'default',
+            animated: updates.edgeType === 'event',
+          }
+        })
+      )
+    },
+    [setEdges]
+  )
+
+  const removeEdge = useCallback(
+    (edgeId: string) => {
+      log.canvas.info('Removing edge', { edgeId })
+      setEdges(eds => eds.filter(e => e.id !== edgeId))
+    },
+    [setEdges]
+  )
+
   const onConnect = useCallback(
     (connection: Connection) => {
       log.canvas.debug('Connecting nodes', connection)
@@ -100,6 +129,8 @@ export function useCanvas(mode: DesignMode) {
             id: uuidv4(),
             type: 'default',
             animated: false,
+            label: '',
+            data: { edgeType: 'http', label: '' },
           },
           eds
         )
@@ -152,7 +183,11 @@ export function useCanvas(mode: DesignMode) {
     updateNodeData,
     updateNodeLabel,
     removeNode,
+    updateEdgeData,
+    removeEdge,
     reactFlowWrapper,
     setInitialCanvas,
+    setNodes,
+    setEdges,
   }
 }

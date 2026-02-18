@@ -3,21 +3,23 @@ import type { Design } from '@shared/types'
 import { X, Copy, Check, Eye, Edit3 } from '@shared/ui/icons'
 import { cn } from '@shared/utils'
 import { getShareUrl } from '../services/design-service'
+import { ROUTES } from '@shared/constants'
 
 interface ShareModalProps {
   design: Design
   onClose: () => void
 }
 
-type CopiedState = 'view' | 'edit' | null
+type CopiedState = 'view' | 'edit' | 'readonly' | null
 
 export function ShareModal({ design, onClose }: ShareModalProps) {
   const [copied, setCopied] = useState<CopiedState>(null)
 
   const viewUrl = getShareUrl(design, 'view')
   const editUrl = getShareUrl(design, 'edit')
+  const readonlyUrl = `${window.location.origin}${ROUTES.VIEW}?id=${design.id}`
 
-  const copyToClipboard = async (url: string, type: 'view' | 'edit') => {
+  const copyToClipboard = async (url: string, type: Exclude<CopiedState, null>) => {
     try {
       await navigator.clipboard.writeText(url)
       setCopied(type)
@@ -52,8 +54,17 @@ export function ShareModal({ design, onClose }: ShareModalProps) {
         <div className="space-y-3 p-5">
           <ShareLinkRow
             icon={<Eye className="h-4 w-4" />}
-            label="View only"
-            description="Anyone with this link can view but not edit"
+            label="Read-only view"
+            description="Interactive read-only canvas — no login needed"
+            url={readonlyUrl}
+            copied={copied === 'readonly'}
+            onCopy={() => copyToClipboard(readonlyUrl, 'readonly')}
+            colorClass="text-success"
+          />
+          <ShareLinkRow
+            icon={<Eye className="h-4 w-4" />}
+            label="View token"
+            description="Original view token link (legacy)"
             url={viewUrl}
             copied={copied === 'view'}
             onCopy={() => copyToClipboard(viewUrl, 'view')}

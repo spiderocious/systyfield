@@ -258,7 +258,7 @@ export function BaseNode({ data, selected }: CanvasNodeProps) {
 
   return (
     <div
-      className="relative"
+      className="relative group"
       onMouseEnter={() => { if (isSimulating) setShowMetrics(true) }}
       onMouseLeave={() => setShowMetrics(false)}
     >
@@ -367,14 +367,22 @@ export function BaseNode({ data, selected }: CanvasNodeProps) {
           </div>
         )}
 
-        <Handle type="target" position={Position.Left}
-          className="!h-3 !w-3 !rounded-full !border-2 !border-card"
-          style={{ backgroundColor: colorVar }}
-        />
-        <Handle type="source" position={Position.Right}
-          className="!h-3 !w-3 !rounded-full !border-2 !border-card"
-          style={{ backgroundColor: colorVar }}
-        />
+        {/* 4-sided connection handles — hidden until node is hovered or connection is in progress */}
+        {(['top', 'right', 'bottom', 'left'] as const).map(side => (
+          <Handle
+            key={side}
+            id={side}
+            type="source"
+            position={
+              side === 'top' ? Position.Top
+              : side === 'right' ? Position.Right
+              : side === 'bottom' ? Position.Bottom
+              : Position.Left
+            }
+            className="!h-2.5 !w-2.5 !rounded-full !border-2 !border-card !opacity-0 group-hover:!opacity-100 !transition-opacity !duration-150 !z-30"
+            style={{ backgroundColor: colorVar }}
+          />
+        ))}
       </div>
 
       {/* Replica expand modal (portalled to body to escape transform context) */}

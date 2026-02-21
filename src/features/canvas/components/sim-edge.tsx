@@ -50,6 +50,7 @@ export function SimEdge({
     rps?: number
     isSimulating?: boolean
     label?: string
+    color?: string
   }
 
   const edgeType      = d.edgeType ?? 'http'
@@ -57,7 +58,7 @@ export function SimEdge({
   const isSimulating  = d.isSimulating ?? false
   const isDashed      = DASHED_TYPES.has(edgeType)
 
-  const baseColor  = EDGE_TYPE_COLORS[edgeType] ?? '#6B7280'
+  const baseColor  = d.color ?? EDGE_TYPE_COLORS[edgeType] ?? '#6B7280'
   const color      = isSimulating && rps > 0 ? trafficColor(rps) : baseColor
   const strokeW    = selected ? 2.5 : isSimulating && rps > 50 ? 2 : 1.5
 
@@ -102,6 +103,16 @@ export function SimEdge({
           strokeLinecap="round"
         />
       )}
+
+      {/* Wide transparent hit area — makes edges much easier to click */}
+      <path
+        d={edgePath}
+        fill="none"
+        stroke="#000"
+        strokeWidth={18}
+        strokeOpacity={0}
+        style={{ cursor: 'pointer' }}
+      />
 
       {/* Main edge path */}
       <path

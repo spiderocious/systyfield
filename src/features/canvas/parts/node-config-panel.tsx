@@ -460,6 +460,11 @@ export function NodeConfigPanel({
   const colorVar = `var(${def.colorVar})`
   const nodeData = node.data.data as unknown as Record<string, unknown>
 
+  const hasReplicas = def.configFields.some(f => f.key === 'replicas')
+  const hasCpu = def.configFields.some(f => f.key === 'cpu')
+  const hasRam = def.configFields.some(f => f.key === 'ram')
+  const hasQuickScale = hasReplicas || hasCpu || hasRam
+
   const inputClass = 'w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary/20'
 
   return (
@@ -550,6 +555,82 @@ export function NodeConfigPanel({
             )}
           </div>
         ))}
+
+        {/* Quick Scale section */}
+        {hasQuickScale && (
+          <div className="rounded-lg border border-border bg-muted/10 p-3 space-y-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Quick Scale</p>
+
+            {hasReplicas && (() => {
+              const field = def.configFields.find(f => f.key === 'replicas')
+              const cur = Number(nodeData['replicas'] ?? 1)
+              const min = field?.min ?? 1
+              const max = field?.max ?? 100
+              return (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-foreground">Replicas</span>
+                    <span className="text-xs font-mono text-muted-foreground">×{cur}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {([-5, -1, 1, 5] as const).map(d => (
+                      <button key={d} type="button"
+                        onClick={() => onUpdateData(node.id, { replicas: Math.min(max, Math.max(min, cur + d)) })}
+                        className="flex-1 rounded-lg border border-border bg-background py-1 text-xs font-semibold text-foreground hover:bg-muted hover:border-primary/30 transition-colors"
+                      >{d > 0 ? `+${d}` : d}</button>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
+
+            {hasCpu && (() => {
+              const field = def.configFields.find(f => f.key === 'cpu')
+              const cur = Number(nodeData['cpu'] ?? 1)
+              const min = field?.min ?? 0.25
+              const max = field?.max ?? 64
+              return (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-foreground">CPU</span>
+                    <span className="text-xs font-mono text-muted-foreground">{cur} vCPU</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {([-2, -0.5, 0.5, 2] as const).map(d => (
+                      <button key={d} type="button"
+                        onClick={() => onUpdateData(node.id, { cpu: Math.min(max, Math.max(min, Math.round((cur + d) * 4) / 4)) })}
+                        className="flex-1 rounded-lg border border-border bg-background py-1 text-xs font-semibold text-foreground hover:bg-muted hover:border-primary/30 transition-colors"
+                      >{d > 0 ? `+${d}` : d}</button>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
+
+            {hasRam && (() => {
+              const field = def.configFields.find(f => f.key === 'ram')
+              const cur = Number(nodeData['ram'] ?? 2)
+              const min = field?.min ?? 0.5
+              const max = field?.max ?? 256
+              return (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-foreground">RAM</span>
+                    <span className="text-xs font-mono text-muted-foreground">{cur} GB</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {([-4, -1, 1, 4] as const).map(d => (
+                      <button key={d} type="button"
+                        onClick={() => onUpdateData(node.id, { ram: Math.min(max, Math.max(min, Math.round((cur + d) * 2) / 2)) })}
+                        className="flex-1 rounded-lg border border-border bg-background py-1 text-xs font-semibold text-foreground hover:bg-muted hover:border-primary/30 transition-colors"
+                      >{d > 0 ? `+${d}` : d}</button>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
+        )}
 
         {/* Universal node metadata section */}
         {onUpdateMeta && (

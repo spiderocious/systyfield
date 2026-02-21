@@ -244,9 +244,16 @@ export function SimulationToolbar({
           </>
         )}
 
-        {/* Reset */}
+        {/* Run Again / Reset */}
         {!isActive && progressPercent > 0 && (
           <>
+            <SimButton
+              icon={<Play className="h-3.5 w-3.5" />}
+              label="Run Again"
+              variant="primary"
+              onClick={handleStart}
+              title="Re-run with the same configuration"
+            />
             <SimButton
               icon={<RotateCcw className="h-3 w-3" />}
               label="Reset"

@@ -96,6 +96,30 @@ export async function exportCanvasAsPng(
   }
 }
 
+// ─── SVG canvas export ─────────────────────────────────────────────────────────
+
+export async function exportCanvasAsSvg(
+  element: HTMLElement,
+  designTitle: string
+): Promise<void> {
+  try {
+    const { toSvg } = await import('html-to-image')
+    const dataUrl = await toSvg(element, {
+      backgroundColor: 'var(--background)',
+    })
+    const a = document.createElement('a')
+    a.href = dataUrl
+    a.download = `${designTitle.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-canvas.svg`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    log.session.info('Canvas exported as SVG', { title: designTitle })
+  } catch (err) {
+    log.session.error('SVG export failed (html-to-image may not be installed)', err)
+    throw new Error('SVG export requires the html-to-image package. Run: npm install html-to-image')
+  }
+}
+
 // ─── OpenAPI 3.0 export from service-mode graph ────────────────────────────────
 
 

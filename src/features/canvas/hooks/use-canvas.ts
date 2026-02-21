@@ -13,7 +13,7 @@ import { log } from '@shared/utils'
 import type { CanvasNode } from '../types/canvas-node.types'
 
 export type { CanvasNode }
-export type CanvasEdge = Edge<{ label?: string; edgeType?: string; latencyMs?: number }>
+export type CanvasEdge = Edge<{ label?: string; edgeType?: string; latencyMs?: number; isSimulating?: boolean; rps?: number; color?: string }>
 
 export function useCanvas(mode: DesignMode) {
   const [nodes, setNodes, onNodesChange] = useNodesState<CanvasNode>([])
@@ -91,7 +91,7 @@ export function useCanvas(mode: DesignMode) {
   )
 
   const updateEdgeData = useCallback(
-    (edgeId: string, updates: Partial<{ label: string; edgeType: string; latencyMs: number }>) => {
+    (edgeId: string, updates: Partial<{ label: string; edgeType: string; latencyMs: number; color: string | undefined }>) => {
       log.canvas.debug('Updating edge data', { edgeId, updates })
       setEdges(eds =>
         eds.map(e => {

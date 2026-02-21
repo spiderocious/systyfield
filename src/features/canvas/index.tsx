@@ -6,6 +6,7 @@ import {
   BackgroundVariant,
   useReactFlow,
   ReactFlowProvider,
+  ConnectionMode,
   type NodeTypes,
   type EdgeTypes,
   Panel,
@@ -105,7 +106,7 @@ interface Toast {
   type: 'success' | 'error' | 'info'
 }
 
-export function useToasts() {
+function useToasts() {
   const [toasts, setToasts] = useState<Toast[]>([])
 
   const addToast = useCallback((message: string, type: Toast['type'] = 'success') => {
@@ -490,6 +491,26 @@ function CanvasInner() {
     }))
   }, [liveMetrics, isSimActive, simState]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Real-time edge traffic ───────────────────────────────────────────────
+  useEffect(() => {
+    // Clear animations when sim is stopped or completed
+    if (isCompleted || !isSimActive || !liveMetrics) {
+      setEdges(eds => eds.map(e => ({
+        ...e,
+        data: { ...(e.data as Record<string, unknown>), isSimulating: false, rps: 0 },
+      })))
+      return
+    }
+    // Compute outgoing edge count per source node
+    const outgoing: Record<string, number> = {}
+    edges.forEach(e => { outgoing[e.source] = (outgoing[e.source] ?? 0) + 1 })
+    setEdges(eds => eds.map(e => {
+      const src = liveMetrics.nodes.find(m => m.nodeId === e.source)
+      const rps = src && outgoing[e.source] > 0 ? src.rps / outgoing[e.source] : 0
+      return { ...e, data: { ...(e.data as Record<string, unknown>), isSimulating: true, rps } }
+    }))
+  }, [liveMetrics, isSimActive, isCompleted]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Bottleneck detection after sim completes ──────────────────────────────
   useEffect(() => {
     if (!isCompleted || !liveMetrics) return
@@ -598,7 +619,7 @@ function CanvasInner() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [nodes, copiedNodes, undo, redo, saveNow, addToast, setNodes, state.nodeId, setUrlState]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [nodes, copiedNodes, undo, redo, saveNow, addToast, setNodes, state.nodeId, setUrlState])
 
   // ── Node alignment ──────────────────────────────────────────────────────────
   const selectedNodes = nodes.filter(n => n.selected)
@@ -693,6 +714,18 @@ function CanvasInner() {
     }
   }, [design, addToast])
 
+  // ── Export SVG ─────────────────────────────────────────────────────────────────
+  const handleExportSvg = useCallback(async () => {
+    const el = canvasWrapperRef.current
+    if (!el || !design) return
+    try {
+      await exportCanvasAsSvg(el, design.meta.title)
+      addToast('Canvas exported as SVG')
+    } catch (err) {
+      addToast((err as Error).message, 'error')
+    }
+  }, [design, addToast])
+
   // ── Export OpenAPI ────────────────────────────────────────────────────────────
   const handleExportOpenApi = useCallback(() => {
     if (!design) return
@@ -754,8 +787,24 @@ function CanvasInner() {
 
   const handleRemoveEdge = useCallback((edgeId: string) => {
     removeEdge(edgeId)
+    setSelectedEdgeId(null)
     addToast('Connection removed')
-  }, [removeEdge, addToast])
+  }, [removeEdge, addToast, setSelectedEdgeId])
+
+  const handleReverseEdge = useCallback((edgeId: string) => {
+    setEdges(eds => eds.map(e => e.id !== edgeId ? e : {
+      ...e,
+      source: e.target,
+      target: e.source,
+      sourceHandle: e.targetHandle,
+      targetHandle: e.sourceHandle,
+    }))
+    addToast('Direction reversed')
+  }, [setEdges, addToast])
+
+  const handleRepointEdge = useCallback((edgeId: string, updates: { source?: string; target?: string }) => {
+    setEdges(eds => eds.map(e => e.id !== edgeId ? e : { ...e, ...updates }))
+  }, [setEdges])
 
   // ── Update node top-level fields (notes/tags/color) ──────────────────────
   const updateNodeMeta = useCallback((nodeId: string, meta: { notes?: string; tags?: string[]; color?: string }) => {
@@ -783,6 +832,7 @@ function CanvasInner() {
           bgStyle={bgStyle}
           onImportDesign={handleImportDesign}
           onExportPng={handleExportPng}
+          onExportSvg={handleExportSvg}
           onExportOpenApi={state.mode === 'service' ? handleExportOpenApi : undefined}
           onExportTs={state.mode === 'ui' ? handleExportTs : undefined}
         />
@@ -808,6 +858,7 @@ function CanvasInner() {
             onDragOver={onDragOver}
             nodeTypes={NODE_TYPES}
             edgeTypes={EDGE_TYPES}
+            connectionMode={ConnectionMode.Loose}
             fitView
             deleteKeyCode={['Delete', 'Backspace']}
             multiSelectionKeyCode="Shift"
@@ -839,6 +890,10 @@ function CanvasInner() {
                 </button>
                 <button type="button" onClick={redo} className="rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30" title="Redo (Ctrl+Shift+Z)">
                   <Redo2 className="h-3.5 w-3.5" />
+                </button>
+                <div className="h-3 w-px bg-border mx-0.5" />
+                <button type="button" onClick={() => reactFlowInstance.fitView({ padding: 0.1, duration: 400 })} className="rounded p-0.5 text-muted-foreground hover:text-foreground" title="Fit view">
+                  <Maximize2 className="h-3.5 w-3.5" />
                 </button>
               </div>
             </Panel>
@@ -929,24 +984,8 @@ function CanvasInner() {
           {showTour && <OnboardingTour onComplete={completeTour} />}
         </div>
 
-        {/* Right panel */}
-        {isSimActive && liveMetrics ? (
-          <MetricsPanel
-            metrics={liveMetrics}
-            elapsedMs={simState?.elapsedMs ?? 0}
-            progressPercent={progressPercent}
-            simulationType={simType}
-            nodes={nodes}
-            onExportCsv={hasMetrics ? handleExportMetricsCsv : undefined}
-          />
-        ) : selectedEdge ? (
-          <EdgeConfigPanel
-            edge={selectedEdge}
-            onClose={() => setSelectedEdgeId(null)}
-            onUpdateEdge={updateEdgeData}
-            onRemoveEdge={handleRemoveEdge}
-          />
-        ) : selectedNode ? (
+        {/* Right panel — node/edge config take priority; metrics shows when nothing selected */}
+        {selectedNode ? (
           <NodeConfigPanel
             node={selectedNode}
             onClose={() => setUrlState({ nodeId: null })}
@@ -954,6 +993,25 @@ function CanvasInner() {
             onUpdateLabel={updateNodeLabel}
             onRemove={handleRemoveNode}
             onUpdateMeta={updateNodeMeta}
+          />
+        ) : selectedEdge ? (
+          <EdgeConfigPanel
+            edge={selectedEdge}
+            nodes={nodes}
+            onClose={() => setSelectedEdgeId(null)}
+            onUpdateEdge={updateEdgeData}
+            onRemoveEdge={handleRemoveEdge}
+            onReverseEdge={handleReverseEdge}
+            onRepointEdge={handleRepointEdge}
+          />
+        ) : isSimActive && liveMetrics ? (
+          <MetricsPanel
+            metrics={liveMetrics}
+            elapsedMs={simState?.elapsedMs ?? 0}
+            progressPercent={progressPercent}
+            simulationType={simType}
+            nodes={nodes}
+            onExportCsv={hasMetrics ? handleExportMetricsCsv : undefined}
           />
         ) : null}
       </div>

@@ -29,6 +29,7 @@ interface DesignHeaderBarProps {
   bgStyle?: BgStyle
   onImportDesign?: (design: Design) => void
   onExportPng?: () => void
+  onExportSvg?: () => void
   onExportOpenApi?: () => void
   onExportTs?: () => void
 }
@@ -44,6 +45,7 @@ export function DesignHeaderBar({
   bgStyle = 'dots',
   onImportDesign,
   onExportPng,
+  onExportSvg,
   onExportOpenApi,
   onExportTs,
 }: DesignHeaderBarProps) {
@@ -191,6 +193,16 @@ export function DesignHeaderBar({
                 >
                   <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
                   Export as PNG
+                </button>
+              )}
+              {onExportSvg && (
+                <button
+                  type="button"
+                  onClick={() => { onExportSvg(); setShowExportMenu(false) }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
+                >
+                  <ImageIcon className="h-3.5 w-3.5 text-primary/70" />
+                  Export as SVG
                 </button>
               )}
               {onExportOpenApi && (

@@ -158,6 +158,84 @@ function PropsEditorField({ value, onChange }: { value: ComponentProp[] | undefi
   )
 }
 
+// ─── Response branch editor ───────────────────────────────────────────────────
+
+interface ResponseBranch { value: string; label: string; description?: string; statusCode?: number }
+
+function BranchEditorField({ value, onChange }: { value: ResponseBranch[] | undefined; onChange: (v: ResponseBranch[]) => void }) {
+  const branches = Array.isArray(value) ? value : []
+
+  const STATUS_COLORS: Record<string, string> = {
+    '2': 'text-emerald-500',
+    '3': 'text-blue-400',
+    '4': 'text-amber-500',
+    '5': 'text-destructive',
+  }
+
+  const colorFor = (code: number | undefined) => {
+    if (!code) return 'text-muted-foreground'
+    return STATUS_COLORS[String(code)[0]] ?? 'text-muted-foreground'
+  }
+
+  return (
+    <div className="space-y-2">
+      {branches.map((b, i) => (
+        <div key={i} className="rounded-lg border border-border bg-muted/20 p-2.5 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Branch {i + 1}</span>
+            <button
+              type="button"
+              onClick={() => onChange(branches.filter((_, idx) => idx !== i))}
+              className="rounded p-0.5 text-muted-foreground hover:text-destructive"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+          {/* Value + status code row */}
+          <div className="flex gap-1.5">
+            <input
+              value={b.value}
+              onChange={e => onChange(branches.map((x, idx) => idx === i ? { ...x, value: e.target.value } : x))}
+              placeholder="APPROVED"
+              className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs font-mono text-foreground outline-none focus:border-primary"
+            />
+            <input
+              type="number"
+              value={b.statusCode ?? ''}
+              onChange={e => onChange(branches.map((x, idx) => idx === i ? { ...x, statusCode: e.target.value ? Number(e.target.value) : undefined } : x))}
+              placeholder="200"
+              min={100}
+              max={599}
+              className={`w-16 rounded border border-border bg-background px-2 py-1 text-xs font-mono outline-none focus:border-primary ${colorFor(b.statusCode)}`}
+            />
+          </div>
+          {/* Label */}
+          <input
+            value={b.label}
+            onChange={e => onChange(branches.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))}
+            placeholder="Branch label shown in UI"
+            className="w-full rounded border border-border bg-background px-2 py-1 text-xs text-foreground outline-none focus:border-primary"
+          />
+          {/* Description */}
+          <input
+            value={b.description ?? ''}
+            onChange={e => onChange(branches.map((x, idx) => idx === i ? { ...x, description: e.target.value || undefined } : x))}
+            placeholder="Optional description..."
+            className="w-full rounded border border-border bg-background px-2 py-1 text-[11px] text-muted-foreground outline-none focus:border-primary"
+          />
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => onChange([...branches, { value: '', label: '', statusCode: 200 }])}
+        className="text-xs text-primary hover:underline"
+      >
+        + Add response branch
+      </button>
+    </div>
+  )
+}
+
 // ─── JSON editor ──────────────────────────────────────────────────────────────
 
 function JsonEditorField({ value, onChange }: { value: string | undefined; onChange: (v: string) => void }) {
@@ -390,6 +468,14 @@ function FieldInput({ field, value, onChange }: FieldInputProps) {
       return (
         <ImageUploadField
           value={value as string | undefined}
+          onChange={onChange}
+        />
+      )
+
+    case 'branch-editor':
+      return (
+        <BranchEditorField
+          value={value as ResponseBranch[] | undefined}
           onChange={onChange}
         />
       )

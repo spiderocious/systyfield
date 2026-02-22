@@ -8,6 +8,7 @@ export interface UrlState {
   simId: string | null
   panel: 'palette' | 'metrics' | 'config' | null
   debug: boolean
+  embed: boolean
 }
 
 function parseMode(raw: string | null): DesignMode {
@@ -30,6 +31,7 @@ export function useUrlState() {
     simId: params.get('simId'),
     panel: parsePanel(params.get('panel')),
     debug: params.get('debug') === 'true',
+    embed: params.get('embed') === 'true',
   }
 
   const setUrlState = useCallback(
@@ -59,6 +61,10 @@ export function useUrlState() {
       if ('debug' in updates) {
         if (updates.debug) current.set('debug', 'true')
         else current.delete('debug')
+      }
+      if ('embed' in updates) {
+        if (updates.embed) current.set('embed', 'true')
+        else current.delete('embed')
       }
 
       navigate({ search: current.toString() }, { replace: true })

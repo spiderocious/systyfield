@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Design } from '@shared/types'
-import { X, Copy, Check, Eye, Edit3 } from '@shared/ui/icons'
+import { X, Copy, Check, Eye, Edit3, Code2 } from '@shared/ui/icons'
 import { cn } from '@shared/utils'
 import { getShareUrl } from '../services/design-service'
 import { ROUTES } from '@shared/constants'
@@ -10,7 +10,7 @@ interface ShareModalProps {
   onClose: () => void
 }
 
-type CopiedState = 'view' | 'edit' | 'readonly' | null
+type CopiedState = 'view' | 'edit' | 'readonly' | 'embed' | 'embed-code' | null
 
 export function ShareModal({ design, onClose }: ShareModalProps) {
   const [copied, setCopied] = useState<CopiedState>(null)
@@ -18,6 +18,8 @@ export function ShareModal({ design, onClose }: ShareModalProps) {
   const viewUrl = getShareUrl(design, 'view')
   const editUrl = getShareUrl(design, 'edit')
   const readonlyUrl = `${window.location.origin}${ROUTES.VIEW}?id=${design.id}`
+  const embedUrl = `${window.location.origin}/canvas/${design.id}?mode=${design.mode}&embed=true`
+  const embedCode = `<iframe\n  src="${embedUrl}"\n  width="100%"\n  height="600"\n  frameborder="0"\n  allowfullscreen\n></iframe>`
 
   const copyToClipboard = async (url: string, type: Exclude<CopiedState, null>) => {
     try {
@@ -80,6 +82,59 @@ export function ShareModal({ design, onClose }: ShareModalProps) {
             colorClass="text-warning"
             isPrivate
           />
+
+          {/* Embed section */}
+          <div className="rounded-xl border border-border p-3 space-y-2.5">
+            <div className="flex items-center gap-2">
+              <span className="text-primary"><Code2 className="h-4 w-4" /></span>
+              <div>
+                <p className="text-xs font-semibold text-foreground">Embed in iframe</p>
+                <p className="text-[10px] text-muted-foreground">
+                  Locks to <span className="font-semibold">{design.mode}</span> mode — no editing, no panels. Simulations still work.
+                </p>
+              </div>
+            </div>
+
+            {/* Embed URL row */}
+            <div className="flex items-center gap-2">
+              <input
+                readOnly
+                value={embedUrl}
+                className="flex-1 rounded-lg border border-border bg-muted px-2.5 py-1.5 text-[10px] font-mono text-muted-foreground outline-none truncate"
+              />
+              <button
+                type="button"
+                onClick={() => copyToClipboard(embedUrl, 'embed')}
+                className={cn(
+                  'flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all',
+                  copied === 'embed'
+                    ? 'bg-success/10 text-success'
+                    : 'bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground'
+                )}
+              >
+                {copied === 'embed' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                {copied === 'embed' ? 'Copied!' : 'Link'}
+              </button>
+            </div>
+
+            {/* Iframe code row */}
+            <div className="flex items-start gap-2">
+              <pre className="flex-1 rounded-lg border border-border bg-muted px-2.5 py-1.5 text-[9px] font-mono text-muted-foreground overflow-x-auto whitespace-pre">{embedCode}</pre>
+              <button
+                type="button"
+                onClick={() => copyToClipboard(embedCode, 'embed-code')}
+                className={cn(
+                  'flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all mt-0.5',
+                  copied === 'embed-code'
+                    ? 'bg-success/10 text-success'
+                    : 'bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground'
+                )}
+              >
+                {copied === 'embed-code' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                {copied === 'embed-code' ? 'Copied!' : 'Code'}
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Footer note */}

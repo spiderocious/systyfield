@@ -36,7 +36,22 @@ export type SystemNodeType =
   | 'service-mesh'
 
 // UI mode node types
-export type UINodeType = 'screen' | 'api-binding' | 'component'
+export type UINodeType =
+  | 'screen' | 'api-binding' | 'component'
+  // Pages & Layouts
+  | 'page' | 'layout' | 'modal' | 'error-page' | 'not-found-page'
+  // State & Data
+  | 'state-store' | 'context-provider' | 'data-fetcher' | 'server-action' | 'ui-form'
+  // Rendering Patterns
+  | 'suspense-boundary' | 'error-boundary' | 'server-component' | 'client-component' | 'conditional-render'
+  // Auth & Access
+  | 'auth-provider' | 'auth-guard' | 'role-gate'
+  // Integrations
+  | 'analytics' | 'feature-flag' | 'cdn-asset'
+  // Flow & Logic (behavioral layer)
+  | 'decision-gate' | 'feature-flag-gate' | 'api-call'
+  | 'service-singleton' | 'polling-node' | 'named-state'
+  | 'navigation-trigger' | 'epic-annotation' | 'flow-group'
 
 // Service mode node types
 export type ServiceNodeType =
@@ -361,20 +376,225 @@ export interface ServiceMeshData {
 
 // ─── Screen / UI Node Data ────────────────────────────────────────────────────
 
+export type RenderStrategy = 'CSR' | 'SSR' | 'SSG' | 'ISR'
+export type ScreenSize = 'mobile' | 'tablet' | 'desktop'
+
+export interface PageData {
+  type: 'page'
+  path: string
+  renderStrategy: RenderStrategy
+  revalidateSeconds: number
+  authProtected: boolean
+  redirectPath: string
+  metaTitle: string
+  metaDescription: string
+  loadingBehavior: 'Suspense' | 'Skeleton' | 'Spinner' | 'None'
+  hasErrorBoundary: boolean
+  pageTransition: 'None' | 'Fade' | 'Slide' | 'Scale'
+  framework: 'nextjs-app' | 'nextjs-pages' | 'react-router' | 'remix' | 'nuxt'
+}
+
+export interface LayoutData {
+  type: 'layout'
+  name: string
+  wrapsAll: boolean
+  hasNavbar: boolean
+  hasSidebar: boolean
+  hasSidebarCollapsible: boolean
+  authAware: boolean
+}
+
+export interface ModalData {
+  type: 'modal'
+  name: string
+  triggerType: 'onClick' | 'onAction' | 'onError' | 'programmatic'
+  closeOnBackdrop: boolean
+  width: 'sm' | 'md' | 'lg' | 'xl' | 'full'
+  animationType: 'fade' | 'slide-up' | 'slide-right' | 'scale'
+}
+
+export interface ErrorPageData {
+  type: 'error-page'
+  name: string
+  hasRetryButton: boolean
+  hasHomeButton: boolean
+  logsToSentry: boolean
+}
+
+export interface NotFoundPageData {
+  type: 'not-found-page'
+  name: string
+  hasSearchBar: boolean
+  hasSuggestions: boolean
+}
+
+export interface StateStoreData {
+  type: 'state-store'
+  name: string
+  library: 'zustand' | 'redux' | 'jotai' | 'recoil' | 'context-only'
+  slices: string[]
+  persisted: boolean
+  persistenceTarget: 'localStorage' | 'sessionStorage' | 'cookie'
+  devtools: boolean
+}
+
+export interface ContextProviderData {
+  type: 'context-provider'
+  name: string
+  valueShape: string
+  defaultValue: string
+  scope: 'Global' | 'Feature' | 'Page'
+}
+
+export interface DataFetcherData {
+  type: 'data-fetcher'
+  name: string
+  library: 'react-query' | 'swr' | 'native-fetch' | 'apollo'
+  queryKey: string
+  staleTime: number
+  cacheTime: number
+  refetchOnFocus: boolean
+  refetchOnReconnect: boolean
+  suspense: boolean
+  cacheStrategy: 'force-cache' | 'no-store' | 'revalidate'
+  revalidateSeconds: number
+  revalidateTags: string[]
+}
+
+export interface ServerActionData {
+  type: 'server-action'
+  name: string
+  inputSchema: string
+  revalidatesPath: string
+  revalidatesTag: string
+  redirectsTo: string
+  optimisticUpdate: boolean
+}
+
+export interface UiFormData {
+  type: 'ui-form'
+  name: string
+  validationLibrary: 'zod' | 'yup' | 'native' | 'none'
+  submissionType: 'server-action' | 'api-endpoint' | 'external'
+  hasClientValidation: boolean
+  hasOptimisticUI: boolean
+  resetOnSuccess: boolean
+}
+
+export interface SuspenseBoundaryData {
+  type: 'suspense-boundary'
+  name: string
+  fallbackType: 'Skeleton' | 'Spinner' | 'Custom' | 'Blank'
+  fallbackDescription: string
+  timeoutMs: number
+}
+
+export interface ErrorBoundaryData {
+  type: 'error-boundary'
+  name: string
+  fallbackType: 'Inline message' | 'Full page' | 'Toast' | 'Redirect'
+  hasRetry: boolean
+  reportsTo: 'None' | 'Sentry' | 'Datadog' | 'Custom'
+  resetOnNavigation: boolean
+}
+
+export interface ServerComponentData {
+  type: 'server-component'
+  name: string
+  dataSource: string
+  cacheBehavior: 'force-cache' | 'no-store' | 'revalidate'
+  revalidateSeconds: number
+  streaming: boolean
+}
+
+export interface ClientComponentData {
+  type: 'client-component'
+  name: string
+  usesHooks: string[]
+  lazyLoaded: boolean
+  memoized: boolean
+  hasLocalState: boolean
+  browserAPIs: string[]
+}
+
+export interface ConditionalRenderData {
+  type: 'conditional-render'
+  name: string
+  condition: string
+  trueBranch: string
+  falseBranch: string
+  loadingBranch: string
+  conditionSource: 'Auth state' | 'Feature flag' | 'Data' | 'Prop' | 'Store'
+}
+
+export interface AuthProviderData {
+  type: 'auth-provider'
+  provider: 'nextauth' | 'clerk' | 'supabase' | 'auth0' | 'custom'
+  sessionStrategy: 'JWT' | 'Database'
+  sessionDuration: number
+  oauthProviders: string[]
+  hasCredentialsLogin: boolean
+  hasMFA: boolean
+}
+
+export interface AuthGuardData {
+  type: 'auth-guard'
+  name: string
+  redirectPath: string
+  redirectPreservesReturnUrl: boolean
+  requiredRole: string
+}
+
+export interface RoleGateData {
+  type: 'role-gate'
+  name: string
+  requiredRole: string
+  fallback: 'Hidden' | 'Disabled' | 'Redirect' | 'Error message'
+  fallbackMessage: string
+}
+
+export interface AnalyticsData {
+  type: 'analytics'
+  provider: 'ga4' | 'mixpanel' | 'posthog' | 'amplitude' | 'custom'
+  events: string[]
+  userIdentified: boolean
+  anonymized: boolean
+}
+
+export interface FeatureFlagData {
+  type: 'feature-flag'
+  provider: 'launchdarkly' | 'statsig' | 'growthbook' | 'unleash' | 'custom'
+  flagKey: string
+  defaultValue: boolean
+  evaluatedServer: boolean
+}
+
+export interface CdnAssetData {
+  type: 'cdn-asset'
+  provider: 'cloudflare' | 'vercel-edge' | 'cloudfront' | 'fastly' | 'custom'
+  assetTypes: string[]
+  optimizesImages: boolean
+  cacheControlHeader: string
+}
+
 export interface ScreenData {
   type: 'screen'
   name: string
   imageUrl?: string
-  screenSize: 'mobile' | 'tablet' | 'desktop'
-  apiBindings: Array<{
-    regionId: string
-    nodeId: string
-    responsePath: string
-  }>
-  navigationTriggers: Array<{
-    trigger: string
-    targetScreenId: string
-  }>
+  screenSize: ScreenSize
+  path: string
+  renderStrategy: RenderStrategy
+  revalidateSeconds: number
+  authProtected: boolean
+  redirectPath: string
+  metaTitle: string
+  metaDescription: string
+  loadingBehavior: 'Suspense' | 'Skeleton' | 'Spinner' | 'None'
+  hasErrorBoundary: boolean
+  pageTransition: 'None' | 'Fade' | 'Slide' | 'Scale'
+  framework: 'nextjs-app' | 'nextjs-pages' | 'react-router' | 'remix' | 'nuxt'
+  apiBindings: Array<{ regionId: string; nodeId: string; responsePath: string }>
+  navigationTriggers: Array<{ trigger: string; targetScreenId: string }>
 }
 
 export interface ApiBindingData {
@@ -383,6 +603,15 @@ export interface ApiBindingData {
   path: string
   mockResponses: MockResponse[]
   responseShape: JsonSchema | null
+  cacheStrategy: 'force-cache' | 'no-store' | 'revalidate' | 'default'
+  revalidateSeconds: number
+  revalidateTags: string[]
+  authHeader: 'None' | 'Bearer token' | 'Cookie' | 'API Key' | 'Basic'
+  mockStatusCode: number
+  mockResponseBody: string
+  errorStates: string[]
+  loadingDurationMs: number
+  isParallel: boolean
 }
 
 export interface ComponentData {
@@ -391,6 +620,107 @@ export interface ComponentData {
   renderCondition?: string
   dynamicProps: string[]
   componentProps: Array<{ name: string; propType: string; required: boolean }>
+  componentType: 'server' | 'client' | 'shared'
+  lazyLoaded: boolean
+  memoized: boolean
+  accessibilityRole: string
+  storeSubscriptions: string[]
+  animationPreset: 'None' | 'Fade in' | 'Slide up' | 'Scale in' | 'Spring'
+}
+
+// ─── UI Flow & Logic Node Data ────────────────────────────────────────────────
+
+export interface DecisionGateData {
+  type: 'decision-gate'
+  condition: string
+  trueLabel: string
+  falseLabel: string
+  description: string
+}
+
+export interface FeatureFlagGateData {
+  type: 'feature-flag-gate'
+  flagName: string
+  defaultValue: boolean
+  rolloutPercent: number
+  onLabel: string
+  offLabel: string
+  provider: string
+}
+
+export interface ResponseBranch {
+  value: string
+  label: string
+  description: string
+  statusCode?: number
+}
+
+export interface ApiCallData {
+  type: 'api-call'
+  method: HttpMethod
+  endpoint: string
+  responseBranches: ResponseBranch[]
+  requestBodyExample: string
+  authHeader: 'None' | 'Bearer token' | 'Cookie' | 'API Key'
+  timeoutMs: number
+  retryCount: number
+}
+
+export interface ServiceSingletonData {
+  type: 'service-singleton'
+  serviceName: string
+  providedIn: 'root' | 'module' | 'component'
+  initHook: string
+  subscribesTo: string[]
+  exposedMethods: string[]
+  hasLocalState: boolean
+}
+
+export interface PollingNodeData {
+  type: 'polling-node'
+  endpoint: string
+  intervalMs: number
+  maxDurationMs: number
+  successCondition: string
+  failureCondition: string
+  strategy: 'fixed' | 'exponential-backoff'
+}
+
+export interface NamedStateData {
+  type: 'named-state'
+  stateName: string
+  entryAction: string
+  exitAction: string
+  isTerminal: boolean
+  stateEnum: string
+}
+
+export interface NavigationTriggerData {
+  type: 'navigation-trigger'
+  route: string
+  params: Record<string, string>
+  guards: string[]
+  strategy: 'push' | 'replace' | 'modal' | 'tab'
+  queryParams: Record<string, string>
+}
+
+export interface EpicAnnotationData {
+  type: 'epic-annotation'
+  epicName: string
+  description: string
+  owner: string
+  baseline: string
+  target: string
+  unit: string
+  linkedTicket: string
+}
+
+export interface FlowGroupData {
+  type: 'flow-group'
+  groupLabel: string
+  groupColor: string
+  description: string
+  collapsed: boolean
 }
 
 // ─── Service Mode Node Data ───────────────────────────────────────────────────
@@ -487,10 +817,46 @@ export type NodeData =
   | DataWarehouseData
   | StreamProcessorData
   | ServiceMeshData
-  // UI
+  // UI — original
   | ScreenData
   | ApiBindingData
   | ComponentData
+  // UI — Pages & Layouts
+  | PageData
+  | LayoutData
+  | ModalData
+  | ErrorPageData
+  | NotFoundPageData
+  // UI — State & Data
+  | StateStoreData
+  | ContextProviderData
+  | DataFetcherData
+  | ServerActionData
+  | UiFormData
+  // UI — Rendering Patterns
+  | SuspenseBoundaryData
+  | ErrorBoundaryData
+  | ServerComponentData
+  | ClientComponentData
+  | ConditionalRenderData
+  // UI — Auth & Access
+  | AuthProviderData
+  | AuthGuardData
+  | RoleGateData
+  // UI — Integrations
+  | AnalyticsData
+  | FeatureFlagData
+  | CdnAssetData
+  // UI — Flow & Logic
+  | DecisionGateData
+  | FeatureFlagGateData
+  | ApiCallData
+  | ServiceSingletonData
+  | PollingNodeData
+  | NamedStateData
+  | NavigationTriggerData
+  | EpicAnnotationData
+  | FlowGroupData
   // Service
   | ApiEndpointData
   | ValidationStepData
@@ -502,7 +868,15 @@ export type NodeData =
 
 // ─── Edge Types ───────────────────────────────────────────────────────────────
 
-export type EdgeType = 'http' | 'grpc' | 'graphql' | 'event' | 'db-query' | 'navigation' | 'websocket' | 'default'
+export type EdgeType =
+  | 'http' | 'grpc' | 'graphql' | 'event' | 'db-query' | 'navigation' | 'websocket'
+  | 'state-flow' | 'redirect' | 'modal-trigger'
+  // Behavioral / flow edges
+  | 'condition-true' | 'condition-false'
+  | 'flag-on' | 'flag-off'
+  | 'on-success' | 'on-error'
+  | 'navigates-to' | 'triggers' | 'wraps'
+  | 'default'
 
 export interface EdgeData {
   label?: string
@@ -543,6 +917,8 @@ export interface DesignEdge {
   type: EdgeType
   label?: string
   data?: EdgeData
+  sourceHandle?: string   // which handle the edge originates from (e.g. "branch-approved")
+  targetHandle?: string
 }
 
 export interface Canvas {

@@ -32,12 +32,19 @@ export type SimulationType =
   | 'saga-partial-failure'
   | 'retry-amplification'
   | 'rate-limiting'
+  // ── UI Mode — Behavioral Flow ────────────────────────────────────────────
+  | 'ui-flow-trace'       // step-by-step path trace through decision gates
+  | 'ui-branch-explorer'  // explore all branches of a flow simultaneously
+  | 'ui-flag-toggle'      // toggle feature flags and see downstream impact
+  | 'ui-api-response'     // pick an api-call response branch and trace it
+  | 'ui-polling-viz'      // visualize polling node cycles
 
 export type SimulationCategory =
   | 'load-traffic'
   | 'failure-chaos'
   | 'scaling'
   | 'patterns'
+  | 'ui-flow'
 
 // ─── Simulation Param Field Schema ────────────────────────────────────────────
 
@@ -70,6 +77,8 @@ export interface SimTypeDefinition {
   description: string
   category: SimulationCategory
   params: SimParamField[]
+  /** Which design modes this simulation applies to. Defaults to system+service if omitted. */
+  modes?: Array<'system' | 'ui' | 'service'>
 }
 
 // ─── Runtime Simulation State ─────────────────────────────────────────────────
@@ -114,6 +123,11 @@ export interface SimState {
   nodeStates: Record<string, NodeSimState>
   metricsHistory: MetricsSnapshot[]
   currentMetrics: MetricsSnapshot | null
+  // UI flow fields
+  activeEdgeIds?: Set<string>                       // edges currently "lit" in the trace
+  apiResponseSelections?: Record<string, string>    // nodeId → selected branch value
+  activeFlagValues?: Record<string, boolean>        // flagName → current value for this run
+  flowTraceStep?: number                            // current step index in step-by-step trace
 }
 
 export interface NodeSimState {
@@ -126,6 +140,11 @@ export interface NodeSimState {
   queueDepth: number
   baseLatencyMs?: number
   activeReplicas?: number
+  // UI flow fields
+  isActive?: boolean          // node is in the current active path
+  selectedBranch?: string     // for api-call nodes: which response branch is selected (branch value)
+  flagValue?: boolean         // for feature-flag-gate: current flag state in this sim
+  pollingCycle?: number       // for polling-node: current cycle number
 }
 
 // ─── Adapter Interface ────────────────────────────────────────────────────────

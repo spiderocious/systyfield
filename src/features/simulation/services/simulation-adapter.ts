@@ -141,6 +141,24 @@ export class LocalSimulationAdapter implements SimulationAdapter {
       this.activeReplicas[node.id] = replicas
     }
 
+    // Extract UI flow selections from params (serialized as JSON strings by toolbar)
+    let apiResponseSelections: Record<string, string> | undefined
+    let activeFlagValues: Record<string, boolean> | undefined
+    if (config.type.startsWith('ui-')) {
+      try {
+        const rawBranches = config.params.apiResponseSelections
+        if (rawBranches && typeof rawBranches === 'string') {
+          apiResponseSelections = JSON.parse(rawBranches) as Record<string, string>
+        }
+      } catch { /* ignore */ }
+      try {
+        const rawFlags = config.params.activeFlagValues
+        if (rawFlags && typeof rawFlags === 'string') {
+          activeFlagValues = JSON.parse(rawFlags) as Record<string, boolean>
+        }
+      } catch { /* ignore */ }
+    }
+
     const initialState: SimState = {
       simId: config.id,
       config,
@@ -150,12 +168,202 @@ export class LocalSimulationAdapter implements SimulationAdapter {
       nodeStates,
       metricsHistory: [],
       currentMetrics: null,
+      ...(apiResponseSelections ? { apiResponseSelections } : {}),
+      ...(activeFlagValues ? { activeFlagValues } : {}),
     }
 
-    return { simId: config.id, config, canvas, initialState }
+    // UI flow simulations have auto-durations
+    if (config.type.startsWith('ui-')) {
+      const uiDuration = config.type === 'ui-polling-viz' ? 30000
+        : config.type === 'ui-branch-explorer' ? 8000
+        : config.type === 'ui-flag-toggle' ? 5000
+        : 20000 // flow-trace + api-response: 20s default for step animation
+      if (!config.durationMs || config.durationMs <= 0) {
+        initialState.config = { ...config, durationMs: uiDuration }
+      }
+    }
+
+    return { simId: config.id, config: initialState.config, canvas, initialState }
+  }
+
+  // ── UI Flow simulation entry ───────────────────────────────────────────────
+
+  private stepUIFlow(state: SimState, deltaMs: number): SimState {
+    const elapsed = state.elapsedMs + deltaMs
+    const type = state.config.type
+    const params = state.config.params
+    const isDone = elapsed >= state.config.durationMs
+
+    const apiResponseSelections = state.apiResponseSelections ?? {}
+    const activeFlagValues = state.activeFlagValues ?? {}
+
+    const nodeById = new Map(state.canvas.nodes.map(n => [n.id, n]))
+    const edgesBySource = new Map<string, typeof state.canvas.edges[0][]>()
+    for (const edge of state.canvas.edges) {
+      if (!edgesBySource.has(edge.source)) edgesBySource.set(edge.source, [])
+      edgesBySource.get(edge.source)!.push(edge)
+    }
+
+    const nextNodeStates: Record<string, NodeSimState> = {}
+    const activeEdgeIds = new Set<string>()
+
+    if (type === 'ui-flow-trace' || type === 'ui-api-response') {
+      const startId = (params.startNodeId as string) || state.canvas.nodes[0]?.id
+      if (!startId) {
+        return { ...state, elapsedMs: elapsed, status: isDone ? 'completed' : 'running' }
+      }
+
+      // BFS — pick correct outgoing edge per gate type
+      const trace: string[] = []
+      const visitedTrace = new Set<string>()
+      const queue = [startId]
+      while (queue.length > 0) {
+        const nodeId = queue.shift()!
+        if (visitedTrace.has(nodeId)) continue
+        visitedTrace.add(nodeId)
+        trace.push(nodeId)
+        const node = nodeById.get(nodeId)
+        if (!node) continue
+        const outEdges = edgesBySource.get(nodeId) ?? []
+
+        if (node.type === 'api-call') {
+          const sel = apiResponseSelections[nodeId]
+          const matching = sel
+            ? outEdges.filter(e => e.sourceHandle === `branch-${sel}`)
+            : outEdges.slice(0, 1)
+          for (const e of matching) { activeEdgeIds.add(e.id); queue.push(e.target) }
+        } else if (node.type === 'decision-gate') {
+          const edgeType = 'condition-true'
+          const edge = outEdges.find(e => (e.data as Record<string, unknown>)?.edgeType === edgeType) ?? outEdges[0]
+          if (edge) { activeEdgeIds.add(edge.id); queue.push(edge.target) }
+        } else if (node.type === 'feature-flag-gate') {
+          const d = node.data as unknown as Record<string, unknown>
+          const flagName = d.flagName as string
+          const isOn = activeFlagValues[flagName] ?? (d.defaultValue as boolean ?? false)
+          const edgeType = isOn ? 'flag-on' : 'flag-off'
+          const edge = outEdges.find(e => (e.data as Record<string, unknown>)?.edgeType === edgeType) ?? outEdges[0]
+          if (edge) { activeEdgeIds.add(edge.id); queue.push(edge.target) }
+        } else {
+          for (const e of outEdges) { activeEdgeIds.add(e.id); queue.push(e.target) }
+        }
+      }
+
+      // Animate: activate nodes one by one across the duration
+      const stepDurationMs = state.config.durationMs / Math.max(trace.length, 1)
+      const currentStep = Math.min(Math.floor(elapsed / stepDurationMs), trace.length - 1)
+
+      for (let i = 0; i < trace.length; i++) {
+        const nodeId = trace[i]
+        const node = nodeById.get(nodeId)
+        const isActive = i <= currentStep
+        const prev = state.nodeStates[nodeId] ?? {
+          nodeId, isDown: false, isSlow: false, loadFactor: 0, currentRps: 0, errorRate: 0, queueDepth: 0,
+        }
+        const d = node?.data as unknown as Record<string, unknown> | undefined
+        const flagName = d?.flagName as string | undefined
+
+        nextNodeStates[nodeId] = {
+          ...prev,
+          isActive,
+          loadFactor: isActive ? 0.8 : 0.05,
+          currentRps: isActive ? 1 : 0,
+          selectedBranch: node?.type === 'api-call' ? (apiResponseSelections[nodeId] ?? undefined) : undefined,
+          flagValue: node?.type === 'feature-flag-gate' && flagName !== undefined
+            ? (activeFlagValues[flagName] ?? (d?.defaultValue as boolean ?? false))
+            : undefined,
+        }
+      }
+      // Mark inactive nodes
+      for (const node of state.canvas.nodes) {
+        if (!nextNodeStates[node.id]) {
+          const prev = state.nodeStates[node.id] ?? {
+            nodeId: node.id, isDown: false, isSlow: false, loadFactor: 0, currentRps: 0, errorRate: 0, queueDepth: 0,
+          }
+          nextNodeStates[node.id] = { ...prev, isActive: false, loadFactor: 0.03 }
+        }
+      }
+
+    } else if (type === 'ui-branch-explorer') {
+      // All branches run simultaneously — every node and edge is active
+      for (const node of state.canvas.nodes) {
+        const prev = state.nodeStates[node.id] ?? {
+          nodeId: node.id, isDown: false, isSlow: false, loadFactor: 0, currentRps: 0, errorRate: 0, queueDepth: 0,
+        }
+        nextNodeStates[node.id] = { ...prev, isActive: true, loadFactor: clamp(jitter(0.6, 0.1), 0.3, 0.9), currentRps: 0.5 }
+      }
+      for (const edge of state.canvas.edges) activeEdgeIds.add(edge.id)
+
+    } else if (type === 'ui-flag-toggle') {
+      for (const node of state.canvas.nodes) {
+        const prev = state.nodeStates[node.id] ?? {
+          nodeId: node.id, isDown: false, isSlow: false, loadFactor: 0, currentRps: 0, errorRate: 0, queueDepth: 0,
+        }
+        if (node.type === 'feature-flag-gate') {
+          const d = node.data as unknown as Record<string, unknown>
+          const flagName = d.flagName as string
+          const isOn = activeFlagValues[flagName] ?? (d.defaultValue as boolean ?? false)
+          nextNodeStates[node.id] = { ...prev, isActive: true, loadFactor: 0.7, flagValue: isOn }
+          // Activate matching downstream edges
+          const outEdges = edgesBySource.get(node.id) ?? []
+          const edgeType = isOn ? 'flag-on' : 'flag-off'
+          for (const e of outEdges) {
+            if ((e.data as Record<string, unknown>)?.edgeType === edgeType) activeEdgeIds.add(e.id)
+          }
+        } else {
+          nextNodeStates[node.id] = { ...prev, isActive: false, loadFactor: 0.05 }
+        }
+      }
+
+    } else if (type === 'ui-polling-viz') {
+      const speedMultiplier = parseFloat((params.speedMultiplier as string) ?? '5')
+      for (const node of state.canvas.nodes) {
+        const prev = state.nodeStates[node.id] ?? {
+          nodeId: node.id, isDown: false, isSlow: false, loadFactor: 0, currentRps: 0, errorRate: 0, queueDepth: 0,
+        }
+        if (node.type === 'polling-node') {
+          const d = node.data as unknown as Record<string, unknown>
+          const intervalMs = (d.intervalMs as number) ?? 20000
+          const effectiveElapsed = elapsed * speedMultiplier
+          const cycle = Math.floor(effectiveElapsed / intervalMs)
+          const cycleProgress = (effectiveElapsed % intervalMs) / intervalMs
+          const isPulsing = cycleProgress < 0.15
+          nextNodeStates[node.id] = {
+            ...prev, isActive: true,
+            loadFactor: isPulsing ? 0.9 : 0.1,
+            pollingCycle: cycle,
+            currentRps: isPulsing ? 1 : 0,
+          }
+          if (isPulsing) {
+            for (const e of edgesBySource.get(node.id) ?? []) activeEdgeIds.add(e.id)
+          }
+        } else {
+          nextNodeStates[node.id] = { ...prev, isActive: false, loadFactor: 0.03 }
+        }
+      }
+    }
+
+    const metrics = this.computeMetrics(nextNodeStates, elapsed, state.canvas)
+    const history = [...state.metricsHistory, metrics].slice(-300)
+    log.sim.debug('UI flow simulation step', { elapsed, type })
+
+    return {
+      ...state,
+      elapsedMs: elapsed,
+      status: isDone ? 'completed' : 'running',
+      nodeStates: nextNodeStates,
+      metricsHistory: history,
+      currentMetrics: metrics,
+      activeEdgeIds,
+      apiResponseSelections,
+      activeFlagValues,
+    }
   }
 
   step(state: SimState, deltaMs: number): SimState {
+    // Route UI flow simulations to their own handler
+    if (state.config.type.startsWith('ui-')) {
+      return this.stepUIFlow(state, deltaMs)
+    }
     const elapsed = state.elapsedMs + deltaMs
     const params = state.config.params
     const targetRps = (params.rps as number) ?? 100

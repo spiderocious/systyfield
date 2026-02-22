@@ -59,6 +59,42 @@
   --color-node-validation-step: #D97706;
   --color-node-db-step: #7C3AED;
   --color-node-response-config: #0891B2;
+  /* UI Mode — Pages & Layouts */
+  --color-node-page: #6366F1;
+  --color-node-layout: #4F46E5;
+  --color-node-modal: #8B5CF6;
+  --color-node-error-page: #EF4444;
+  --color-node-not-found-page: #F97316;
+  /* UI Mode — State & Data */
+  --color-node-state-store: #0EA5E9;
+  --color-node-context-provider: #06B6D4;
+  --color-node-data-fetcher: #3B82F6;
+  --color-node-server-action: #10B981;
+  --color-node-ui-form: #84CC16;
+  /* UI Mode — Rendering Patterns */
+  --color-node-suspense-boundary: #F59E0B;
+  --color-node-error-boundary: #DC2626;
+  --color-node-server-component: #1E40AF;
+  --color-node-client-component: #D97706;
+  --color-node-conditional-render: #A855F7;
+  /* UI Mode — Auth & Access */
+  --color-node-auth-provider: #EF4444;
+  --color-node-auth-guard: #DC2626;
+  --color-node-role-gate: #991B1B;
+  /* UI Mode — Integrations */
+  --color-node-analytics: #F97316;
+  --color-node-feature-flag: #84CC16;
+  --color-node-cdn-asset: #6B7280;
+  /* UI Mode — Flow & Logic */
+  --color-node-decision-gate: #6366F1;
+  --color-node-feature-flag-gate: #F59E0B;
+  --color-node-api-call: #06B6D4;
+  --color-node-service-singleton: #8B5CF6;
+  --color-node-polling-node: #3B82F6;
+  --color-node-named-state: #10B981;
+  --color-node-navigation-trigger: #F97316;
+  --color-node-epic-annotation: #F59E0B;
+  --color-node-flow-group: #6366F1;
 
   --radius-sm: 6px;
   --radius-md: 8px;

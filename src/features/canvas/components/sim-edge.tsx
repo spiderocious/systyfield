@@ -3,17 +3,33 @@ import { getBezierPath, type EdgeProps } from '@xyflow/react'
 // ─── Edge type color palette ──────────────────────────────────────────────────
 
 const EDGE_TYPE_COLORS: Record<string, string> = {
-  http:       '#6366F1',
-  grpc:       '#8B5CF6',
-  event:      '#F59E0B',
-  sql:        '#10B981',
-  graphql:    '#EC4899',
-  websocket:  '#06B6D4',
-  navigation: '#F97316',
-  default:    '#6B7280',
+  http:              '#6366F1',
+  grpc:              '#8B5CF6',
+  event:             '#F59E0B',
+  sql:               '#10B981',
+  graphql:           '#EC4899',
+  websocket:         '#06B6D4',
+  navigation:        '#F97316',
+  'state-flow':      '#0EA5E9',
+  redirect:          '#F97316',
+  'modal-trigger':   '#A855F7',
+  // Behavioral / flow
+  'condition-true':  '#10B981',
+  'condition-false': '#EF4444',
+  'flag-on':         '#10B981',
+  'flag-off':        '#EF4444',
+  'on-success':      '#10B981',
+  'on-error':        '#EF4444',
+  'navigates-to':    '#F97316',
+  'triggers':        '#A855F7',
+  'wraps':           '#6B7280',
+  default:           '#6B7280',
 }
 
-const DASHED_TYPES = new Set(['event', 'websocket', 'navigation'])
+const DASHED_TYPES = new Set([
+  'event', 'websocket', 'navigation', 'redirect', 'modal-trigger',
+  'condition-false', 'flag-off', 'on-error', 'navigates-to', 'triggers', 'wraps',
+])
 
 function trafficColor(rps: number): string {
   if (rps > 1000) return '#EF4444'

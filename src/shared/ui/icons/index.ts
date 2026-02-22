@@ -129,6 +129,26 @@ export {
   Wand2,
   StickyNote,
   Grid3X3,
+  // New UI mode node icons
+  FileCode,
+  RectangleHorizontal,
+  // Flow & Logic node icons
+  GitFork,
+  Circle,
+  Navigation,
+  SearchX,
+  Brackets,
+  ClipboardList,
+  Loader,
+  MonitorSmartphone,
+  KeyRound,
+  Lock,
+  ToggleLeft,
+  // Additional UI icons
+  Smartphone,
+  Tablet,
+  Clapperboard,
+  Code2,
 } from 'lucide-react'
 
 export type { LucideIcon } from 'lucide-react'

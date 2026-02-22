@@ -13,6 +13,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { CinematicContext } from './context/cinematic-context'
 import { useUrlState } from '@shared/hooks'
 import { log } from '@shared/utils'
 import { useCanvas } from './hooks'
@@ -26,14 +27,14 @@ import type { SimHistoryEntry } from '@features/simulation/parts/simulation-tool
 import { DesignHeaderBar, ShareModal, useDesignSession } from '@features/session'
 import { MetricsPanel } from '@features/metrics-panel'
 import type { NodeData, NodeType, Canvas, DesignNode, DesignEdge, Design } from '@shared/types'
-import { exportCanvasAsPng, exportCanvasAsSvg, exportOpenApiFromCanvas, exportTypescriptFromCanvas, exportMetricsAsCsv } from '@features/session/services/export-service'
+import { exportCanvasAsPng, exportCanvasAsSvg, exportOpenApiFromCanvas, exportTypescriptFromCanvas, exportFolderStructure, exportComponentScaffolds, exportRouteConfig, exportApiClient, exportMetricsAsCsv } from '@features/session/services/export-service'
 import { saveDesign } from '@features/session/services/design-service'
 import type { CanvasNode } from './types'
 import type { CanvasEdge } from './hooks'
 import type { MetricsSnapshot, SimulationConfig } from '@shared/types/simulation.types'
 import { NODE_TYPE_REGISTRY } from '@shared/constants'
 import { cn } from '@shared/utils'
-import { Search, X, AlignLeft, AlignCenter, AlignRight, AlignVerticalJustifyCenter, ArrowUpDown, Undo2, Redo2, Maximize2 } from '@shared/ui/icons'
+import { Search, X, AlignLeft, AlignCenter, AlignRight, AlignVerticalJustifyCenter, ArrowUpDown, Undo2, Redo2, Maximize2, ExternalLink } from '@shared/ui/icons'
 import { OnboardingTour, useOnboardingTour } from './parts/onboarding-tour'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -287,6 +288,8 @@ function CanvasInner() {
   const [hasMetrics, setHasMetrics] = useState(false)
   const metricsHistoryRef = useRef<Array<{ elapsedSec: number; totalRps: number; totalErrorRate: number; avgLatencyP99: number }>>([])
   const canvasWrapperRef = useRef<HTMLDivElement>(null)
+  const [cinematicMode, setCinematicMode] = useState(false)
+  const cinematicPrevFocusRef = useRef<string | null>(null)
 
   const { toasts, addToast } = useToasts()
   const { show: showTour, complete: completeTour } = useOnboardingTour()
@@ -534,6 +537,39 @@ function CanvasInner() {
     }
   }, [isCompleted]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Cinematic auto-zoom ──────────────────────────────────────────────────────
+  // Derive the focus node without storing it in state (avoids setState-in-effect)
+  const cinematicFocusId = useMemo(() => {
+    if (!cinematicMode || !isRunning) return null
+
+    // UI mode: first node marked isActive in the flow trace
+    if (simState?.nodeStates) {
+      const activeEntry = Object.entries(simState.nodeStates).find(([, ns]) => ns.isActive)
+      if (activeEntry) return activeEntry[0]
+    }
+
+    // System/service mode: node with highest current RPS
+    if (liveMetrics && liveMetrics.nodes.length > 0) {
+      const hottest = liveMetrics.nodes.reduce((max, n) => n.rps > max.rps ? n : max)
+      if (hottest.rps > 0) return hottest.nodeId
+    }
+
+    return null
+  }, [cinematicMode, isRunning, simState, liveMetrics])
+
+  // Side-effect: call fitView only when the focus node ID changes
+  useEffect(() => {
+    if (cinematicFocusId && cinematicFocusId !== cinematicPrevFocusRef.current) {
+      reactFlowInstance.fitView({
+        nodes: [{ id: cinematicFocusId }],
+        duration: 700,
+        padding: 0.8,
+        maxZoom: 2.0,
+      })
+    }
+    cinematicPrevFocusRef.current = cinematicFocusId
+  }, [cinematicFocusId]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSimStart = useCallback(
     (config: Omit<SimulationConfig, 'id' | 'createdAt'>) => {
       log.sim.info('Simulation start requested', { type: config.type })
@@ -549,6 +585,7 @@ function CanvasInner() {
     log.sim.info('Simulation stopped')
     stop()
     setLiveMetrics(null)
+    cinematicPrevFocusRef.current = null
     addToast('Simulation stopped')
   }, [stop, addToast])
 
@@ -740,6 +777,31 @@ function CanvasInner() {
     addToast('TypeScript types exported')
   }, [design, canvasSnapshot, addToast])
 
+  // ── UI-mode code exports ──────────────────────────────────────────────────────
+  const handleExportFolderStructure = useCallback(() => {
+    if (!design) return
+    exportFolderStructure(canvasSnapshot, design.meta.title)
+    addToast('Folder structure exported')
+  }, [design, canvasSnapshot, addToast])
+
+  const handleExportScaffolds = useCallback(() => {
+    if (!design) return
+    exportComponentScaffolds(canvasSnapshot, design.meta.title)
+    addToast('Component scaffolds exported')
+  }, [design, canvasSnapshot, addToast])
+
+  const handleExportRoutes = useCallback(() => {
+    if (!design) return
+    exportRouteConfig(canvasSnapshot, design.meta.title)
+    addToast('Route config exported')
+  }, [design, canvasSnapshot, addToast])
+
+  const handleExportApiClient = useCallback(() => {
+    if (!design) return
+    exportApiClient(canvasSnapshot, design.meta.title)
+    addToast('API client exported')
+  }, [design, canvasSnapshot, addToast])
+
   // ── Export metrics CSV ────────────────────────────────────────────────────────
   const handleExportMetricsCsv = useCallback(() => {
     if (!design || metricsHistoryRef.current.length === 0) return
@@ -818,9 +880,10 @@ function CanvasInner() {
   }
 
   return (
+    <CinematicContext.Provider value={{ cinematicMode, focusNodeId: cinematicFocusId }}>
     <div className="flex h-full w-full flex-col overflow-hidden">
-      {/* Design header bar */}
-      {design && (
+      {/* Design header bar — hidden in embed mode */}
+      {design && !state.embed && (
         <DesignHeaderBar
           design={design}
           isSaving={isSaving}
@@ -835,13 +898,17 @@ function CanvasInner() {
           onExportSvg={handleExportSvg}
           onExportOpenApi={state.mode === 'service' ? handleExportOpenApi : undefined}
           onExportTs={state.mode === 'ui' ? handleExportTs : undefined}
+          onExportFolderStructure={state.mode === 'ui' ? handleExportFolderStructure : undefined}
+          onExportScaffolds={state.mode === 'ui' ? handleExportScaffolds : undefined}
+          onExportRoutes={state.mode === 'ui' ? handleExportRoutes : undefined}
+          onExportApiClient={state.mode === 'ui' ? handleExportApiClient : undefined}
         />
       )}
 
       {/* Main area */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left palette */}
-        <NodePalette mode={state.mode} />
+        {/* Left palette — hidden in embed mode */}
+        {!state.embed && <NodePalette mode={state.mode} />}
 
         {/* Canvas */}
         <div className="relative flex-1 overflow-hidden" ref={canvasWrapperRef}>
@@ -850,19 +917,22 @@ function CanvasInner() {
             edges={edges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onNodeClick={handleNodeClick}
-            onEdgeClick={handleEdgeClick}
+            onConnect={state.embed ? undefined : onConnect}
+            onNodeClick={state.embed ? undefined : handleNodeClick}
+            onEdgeClick={state.embed ? undefined : handleEdgeClick}
             onPaneClick={handlePaneClick}
-            onDrop={handleDrop}
-            onDragOver={onDragOver}
+            onDrop={state.embed ? undefined : handleDrop}
+            onDragOver={state.embed ? undefined : onDragOver}
             nodeTypes={NODE_TYPES}
             edgeTypes={EDGE_TYPES}
             connectionMode={ConnectionMode.Loose}
             fitView
-            deleteKeyCode={['Delete', 'Backspace']}
+            nodesDraggable={!state.embed}
+            nodesConnectable={!state.embed}
+            elementsSelectable={!state.embed}
+            deleteKeyCode={state.embed ? null : ['Delete', 'Backspace']}
             multiSelectionKeyCode="Shift"
-            selectionOnDrag
+            selectionOnDrag={!state.embed}
             className="h-full w-full"
             proOptions={{ hideAttribution: true }}
           >
@@ -903,6 +973,7 @@ function CanvasInner() {
           <div className="pointer-events-none absolute inset-x-0 top-4 flex justify-center">
             <div className="pointer-events-auto">
               <SimulationToolbar
+                mode={state.mode}
                 isRunning={isRunning}
                 isPaused={isPaused}
                 progressPercent={progressPercent}
@@ -914,9 +985,24 @@ function CanvasInner() {
                 speedMultiplier={speedMultiplier}
                 onSpeedChange={setSpeedMultiplier}
                 simHistory={simHistory}
+                cinematicMode={cinematicMode}
+                onCinematicToggle={() => setCinematicMode(m => !m)}
               />
             </div>
           </div>
+
+          {/* Embed — floating "Open in full view" button */}
+          {state.embed && design && (
+            <a
+              href={`${window.location.origin}/canvas/${design.id}?mode=${state.mode}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="absolute top-3 right-3 z-40 flex items-center gap-1.5 rounded-lg border border-border bg-card/90 px-2.5 py-1.5 text-xs font-semibold text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:text-foreground hover:border-primary/30"
+            >
+              <ExternalLink className="h-3 w-3" />
+              Open in full view
+            </a>
+          )}
 
           {/* Node search */}
           {showNodeSearch && (
@@ -984,8 +1070,8 @@ function CanvasInner() {
           {showTour && <OnboardingTour onComplete={completeTour} />}
         </div>
 
-        {/* Right panel — node/edge config take priority; metrics shows when nothing selected */}
-        {selectedNode ? (
+        {/* Right panel — hidden in embed mode */}
+        {!state.embed && selectedNode ? (
           <NodeConfigPanel
             node={selectedNode}
             onClose={() => setUrlState({ nodeId: null })}
@@ -994,7 +1080,7 @@ function CanvasInner() {
             onRemove={handleRemoveNode}
             onUpdateMeta={updateNodeMeta}
           />
-        ) : selectedEdge ? (
+        ) : !state.embed && selectedEdge ? (
           <EdgeConfigPanel
             edge={selectedEdge}
             nodes={nodes}
@@ -1004,7 +1090,7 @@ function CanvasInner() {
             onReverseEdge={handleReverseEdge}
             onRepointEdge={handleRepointEdge}
           />
-        ) : isSimActive && liveMetrics ? (
+        ) : !state.embed && isSimActive && liveMetrics ? (
           <MetricsPanel
             metrics={liveMetrics}
             elapsedMs={simState?.elapsedMs ?? 0}
@@ -1024,6 +1110,7 @@ function CanvasInner() {
       {/* Keyboard shortcuts modal */}
       {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
     </div>
+    </CinematicContext.Provider>
   )
 }
 

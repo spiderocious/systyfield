@@ -14,14 +14,27 @@ interface EdgeConfigPanelProps {
 }
 
 const EDGE_TYPES = [
-  { value: 'http',       label: 'HTTP / REST',    color: '#6366F1', dashed: false },
-  { value: 'grpc',       label: 'gRPC',            color: '#8B5CF6', dashed: false },
-  { value: 'event',      label: 'Event / Async',   color: '#F59E0B', dashed: true  },
-  { value: 'sql',        label: 'SQL / DB Query',  color: '#10B981', dashed: false },
-  { value: 'graphql',    label: 'GraphQL',          color: '#EC4899', dashed: false },
-  { value: 'websocket',  label: 'WebSocket',        color: '#06B6D4', dashed: true  },
-  { value: 'navigation', label: 'Navigation',       color: '#F97316', dashed: true  },
-  { value: 'default',    label: 'Generic',          color: '#6B7280', dashed: false },
+  { value: 'http',             label: 'HTTP / REST',      color: '#6366F1', dashed: false },
+  { value: 'grpc',             label: 'gRPC',              color: '#8B5CF6', dashed: false },
+  { value: 'event',            label: 'Event / Async',     color: '#F59E0B', dashed: true  },
+  { value: 'sql',              label: 'SQL / DB Query',    color: '#10B981', dashed: false },
+  { value: 'graphql',          label: 'GraphQL',            color: '#EC4899', dashed: false },
+  { value: 'websocket',        label: 'WebSocket',          color: '#06B6D4', dashed: true  },
+  { value: 'navigation',       label: 'Navigation',         color: '#F97316', dashed: true  },
+  { value: 'state-flow',       label: 'State Flow',         color: '#0EA5E9', dashed: false },
+  { value: 'redirect',         label: 'Redirect',           color: '#F97316', dashed: true  },
+  { value: 'modal-trigger',    label: 'Modal Trigger',      color: '#A855F7', dashed: true  },
+  // Behavioral / flow edges
+  { value: 'condition-true',   label: 'Condition: True',    color: '#10B981', dashed: false },
+  { value: 'condition-false',  label: 'Condition: False',   color: '#EF4444', dashed: true  },
+  { value: 'flag-on',          label: 'Flag: On',           color: '#10B981', dashed: false },
+  { value: 'flag-off',         label: 'Flag: Off',          color: '#EF4444', dashed: true  },
+  { value: 'on-success',       label: 'On Success',         color: '#10B981', dashed: false },
+  { value: 'on-error',         label: 'On Error',           color: '#EF4444', dashed: true  },
+  { value: 'navigates-to',     label: 'Navigates To',       color: '#F97316', dashed: true  },
+  { value: 'triggers',         label: 'Triggers',           color: '#A855F7', dashed: true  },
+  { value: 'wraps',            label: 'Wraps / Contains',   color: '#6B7280', dashed: true  },
+  { value: 'default',          label: 'Generic',            color: '#6B7280', dashed: false },
 ]
 
 const COLOR_SWATCHES = [

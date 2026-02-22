@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import type { Design } from '@shared/types'
-import { Save, Share2, Check, Grid3X3, Layers, SlidersHorizontal, Download, FileJson, Upload, ImageIcon } from '@shared/ui/icons'
+import { Save, Share2, Check, Grid3X3, Layers, SlidersHorizontal, Download, FileJson, FileCode, Upload, ImageIcon } from '@shared/ui/icons'
 import { cn } from '@shared/utils'
 import { exportDesignAsJson, importDesignFromJson } from '../services/export-service'
 
@@ -32,6 +32,10 @@ interface DesignHeaderBarProps {
   onExportSvg?: () => void
   onExportOpenApi?: () => void
   onExportTs?: () => void
+  onExportFolderStructure?: () => void
+  onExportScaffolds?: () => void
+  onExportRoutes?: () => void
+  onExportApiClient?: () => void
 }
 
 export function DesignHeaderBar({
@@ -48,6 +52,10 @@ export function DesignHeaderBar({
   onExportSvg,
   onExportOpenApi,
   onExportTs,
+  onExportFolderStructure,
+  onExportScaffolds,
+  onExportRoutes,
+  onExportApiClient,
 }: DesignHeaderBarProps) {
   const [editing, setEditing] = useState(false)
   const [titleValue, setTitleValue] = useState(design.meta.title)
@@ -221,8 +229,48 @@ export function DesignHeaderBar({
                   onClick={() => { onExportTs(); setShowExportMenu(false) }}
                   className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
                 >
-                  <FileJson className="h-3.5 w-3.5 text-primary" />
+                  <FileCode className="h-3.5 w-3.5 text-primary" />
                   TypeScript Types
+                </button>
+              )}
+              {onExportFolderStructure && (
+                <button
+                  type="button"
+                  onClick={() => { onExportFolderStructure(); setShowExportMenu(false) }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
+                >
+                  <FileCode className="h-3.5 w-3.5 text-warning" />
+                  Folder Structure
+                </button>
+              )}
+              {onExportScaffolds && (
+                <button
+                  type="button"
+                  onClick={() => { onExportScaffolds(); setShowExportMenu(false) }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
+                >
+                  <FileCode className="h-3.5 w-3.5 text-success" />
+                  Component Scaffolds
+                </button>
+              )}
+              {onExportRoutes && (
+                <button
+                  type="button"
+                  onClick={() => { onExportRoutes(); setShowExportMenu(false) }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
+                >
+                  <FileCode className="h-3.5 w-3.5 text-accent" />
+                  Route Config
+                </button>
+              )}
+              {onExportApiClient && (
+                <button
+                  type="button"
+                  onClick={() => { onExportApiClient(); setShowExportMenu(false) }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
+                >
+                  <FileJson className="h-3.5 w-3.5 text-secondary" />
+                  API Client
                 </button>
               )}
               <div className="h-px bg-border mx-3" />

@@ -1,6 +1,6 @@
 import type { Design, Canvas } from "@shared/types";
 import { log } from "@shared/utils";
-
+import htmlToImage from "html-to-image";
 // ─── JSON export ──────────────────────────────────────────────────────────────
 
 export function exportDesignAsJson(design: Design): void {
@@ -86,7 +86,7 @@ export async function exportCanvasAsPng(
 ): Promise<void> {
   try {
     // Dynamic import of html-to-image (may not be installed yet — graceful fallback)
-    const { toPng } = await import("html-to-image");
+    const { toPng } = htmlToImage || (await import("html-to-image"));
     const dataUrl = await toPng(element, {
       quality: 1,
       pixelRatio: 2,
@@ -117,7 +117,7 @@ export async function exportCanvasAsSvg(
   designTitle: string,
 ): Promise<void> {
   try {
-    const { toSvg } = await import("html-to-image");
+    const { toSvg } = htmlToImage || (await import("html-to-image"));
     const dataUrl = await toSvg(element, {
       backgroundColor: "var(--background)",
     });

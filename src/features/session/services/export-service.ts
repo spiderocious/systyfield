@@ -1,6 +1,6 @@
 import type { Design, Canvas } from "@shared/types";
 import { log } from "@shared/utils";
-import htmlToImage from "html-to-image";
+import * as htmlToImage from "html-to-image";
 // ─── JSON export ──────────────────────────────────────────────────────────────
 
 export function exportDesignAsJson(design: Design): void {
